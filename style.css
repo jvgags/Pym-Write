@@ -107,6 +107,15 @@ body {
     font-family: 'Courier New', Courier, monospace;
 }
 
+[data-theme="typewriter"] .ql-toolbar.ql-snow + .ql-container.ql-snow {
+   background-color: #FCF5E4;
+}
+
+[data-theme="typewriter"] .document-info {
+   background-color: #FCF5E4;
+}
+
+
 /* Ocean Blue Theme */
 [data-theme="ocean"] {
     --bg-primary: #e8f4f8;
