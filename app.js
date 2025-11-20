@@ -1307,6 +1307,7 @@ async function continueFromCursor() {
     }
 
     hideFloatingContinueButton();
+    showGeneratingState(true);
 
     const currentText = quillEditor.getText();
     if (currentText.trim().length < 50) {
@@ -1375,48 +1376,194 @@ async function continueFromCursor() {
     } finally {
         btn.disabled = false;
         btn.innerHTML = originalHTML;
+        showGeneratingState(false);
     }
 }
 
 // Show floating button when cursor is in a good spot
 function updateFloatingContinueButton() {
     const range = quillEditor.getSelection();
-    const btn = document.getElementById('floatingContinueBtn');
+    if (!range) return;
 
-    if (!range || range.length > 0 || range.index < 50) {
-        btn.style.display = 'none';
+    const continueBtn = document.getElementById('floatingContinueBtn');
+    const goBtn = document.getElementById('floatingGoBtn');
+
+    const fullText = quillEditor.getText();
+    const textBeforeCursor = quillEditor.getText(0, range.index);
+
+    // Hide both by default
+    continueBtn.style.display = 'none';
+    goBtn.style.display = 'none';
+
+    // CASE 1: Blank document → show "Go" button
+    if (fullText.trim().length === 0 && hasEnabledContextDocuments()) {
+        positionFloatingButton(goBtn, range);
+        goBtn.style.display = 'block';
+        goBtn.classList.add('ready');
         return;
     }
 
-    const textBefore = quillEditor.getText(0, range.index);
-    if (!textBefore.trim() || textBefore.trim().length < 50) {
-        btn.style.display = 'none';
-        return;
+    // CASE 2: Some text exists → show normal "Continue" button
+    if (textBeforeCursor.trim().length >= 50 && range.length === 0) {
+        positionFloatingButton(continueBtn, range);
+        continueBtn.style.display = 'block';
+        continueBtn.classList.add('ready');
     }
+}
 
-    // THE REAL FIX: Quill's getBounds() is relative to the .ql-editor scrolling container
+// Helper: check if any context documents are enabled
+function hasEnabledContextDocuments() {
+    return documents.some(d => 
+        d.projectId === currentProjectId && 
+        d.enabled && 
+        d.id !== currentDocumentId &&
+        ['Synopsis', 'Characters', 'Plot', 'Worldbuilding', 'Writing Style', 'Instructions'].includes(d.type)
+    );
+}
+
+// Shared positioning logic (works perfectly with scroll)
+function positionFloatingButton(btn, range) {
     const bounds = quillEditor.getBounds(range.index);
-    const editorScrollContainer = document.querySelector('.ql-editor');
+    const editor = document.querySelector('.ql-editor');
+    const rect = editor.getBoundingClientRect();
 
-    // Convert to viewport coordinates
-    const containerRect = editorScrollContainer.getBoundingClientRect();
-    const scrollTop = editorScrollContainer.scrollTop;
-    const scrollLeft = editorScrollContainer.scrollLeft;
+    let x = rect.left + bounds.left + editor.scrollLeft + 12;
+    let y = rect.top + bounds.bottom + editor.scrollTop + 10;
+    let flipped = false;
+   
+    // ← THIS IS THE MAGIC: Flip button above the line if it would be off-screen
+    const buttonHeight = 50; // approx height of floating button
+    const spaceBelow = window.innerHeight - (rect.top + bounds.bottom + editor.scrollTop);
+    
+    if (spaceBelow < buttonHeight + 20) {
+        y = rect.top + bounds.top + editor.scrollTop - buttonHeight - 8;
+        flipped = true;
+    }
 
-    const x = containerRect.left + bounds.left + scrollLeft + 12;
-    const y = containerRect.top + bounds.bottom + scrollTop + 8;
+    btn.classList.toggle('flipped', flipped);
 
     btn.style.position = 'fixed';
     btn.style.left = x + 'px';
     btn.style.top = y + 'px';
-    btn.style.display = 'block';
-    btn.classList.add('ready');
+}
+
+async function startFromScratch() {
+    hideFloatingContinueButton();
+
+    showGeneratingState(true, true);
+
+    document.getElementById('floatingGoBtn').style.display = 'none';
+
+    if (!apiKey) {
+        showToast('Add your OpenRouter API key in Settings');
+        return;
+    }
+
+    const model = document.getElementById('modelSelect').value;
+    const tokens = parseInt(document.getElementById('tokensToGenerate').value);
+    const temp = parseFloat(document.getElementById('temperature').value);
+    const contextNotes = document.getElementById('contextNotes').value;
+
+    // Gather full context from enabled documents
+    const enabledDocs = documents
+        .filter(d => d.projectId === currentProjectId && d.enabled && d.id !== currentDocumentId)
+        .sort((a, b) => a.order - b.order);
+
+    let fullContext = enabledDocs.map(doc => {
+        const text = new DOMParser().parseFromString(doc.content, 'text/html').body.textContent || '';
+        return `--- ${doc.type}: ${doc.title} ---\n${text.trim()}\n`;
+    }).join('\n');
+
+    if (contextNotes) fullContext += `\n\nAdditional Notes:\n${contextNotes}`;
+
+    const systemPrompt = `You are an expert novelist starting a new ${getCurrentProjectGenre() || 'story'}.
+Use ALL the context below to begin writing the first scene/chapter in a compelling, immersive style.
+Write in third-person limited (or first-person if the style guide says so).
+Start directly with action or vivid description — no summaries or "Chapter 1" titles unless instructed.
+
+Context:
+${fullContext}`;
+
+    const userPrompt = "Begin the story now.";
+
+    try {
+        document.getElementById('floatingGoBtn').textContent = '🚀 Generating...';
+
+        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`,
+                'HTTP-Referer': window.location.origin,
+                'X-Title': 'Pym Write'
+            },
+            body: JSON.stringify({
+                model: model,
+                messages: [
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: userPrompt }
+                ],
+                temperature: temp,
+                max_tokens: tokens
+            })
+        });
+
+        if (!response.ok) throw new Error('API error');
+
+        const data = await response.json();
+        const generatedText = data.choices[0].message.content.trim();
+
+        // Stream from the very beginning
+        streamInsertAtCursor(generatedText, 0);
+
+    } catch (err) {
+        console.error(err);
+        showToast('Failed to start. Check API key.');
+        document.getElementById('floatingGoBtn').textContent = '🚀 Go – Start writing';
+    } finally {
+        showGeneratingState(false, true);  
+        document.querySelector('#floatingGoBtn .btn-text').textContent = '🚀 Go – Start writing';
+    }
+}
+
+function getCurrentProjectGenre() {
+    const project = projects.find(p => p.id === currentProjectId);
+    return project?.genre || '';
 }
 
 function hideFloatingContinueButton() {
-    const btn = document.getElementById('floatingContinueBtn');
-    btn.style.display = 'none';
-    btn.classList.remove('ready');
+    document.getElementById('floatingContinueBtn').style.display = 'none';
+    document.getElementById('floatingGoBtn').style.display = 'none';
+    document.querySelectorAll('.floating-continue-btn, .floating-go-btn').forEach(b => b.classList.remove('ready'));
+}
+
+function showGeneratingState(isGenerating, isGoButton = false) {
+    const continueBtn = document.getElementById('floatingContinueBtn');
+    const goBtn = document.getElementById('floatingGoBtn');
+    const topBtn = document.getElementById('continueBtn');
+
+    if (isGoButton) {
+        if (isGenerating) goBtn.classList.add('generating');
+        else goBtn.classList.remove('generating');
+    } else {
+        if (isGenerating) continueBtn.classList.add('generating');
+        else continueBtn.classList.remove('generating');
+    }
+
+    // Also update top toolbar button
+    if (topBtn) {
+        const icon = topBtn.querySelector('.toolbar-icon');
+        const label = topBtn.querySelector('.toolbar-label');
+        if (isGenerating) {
+            icon.textContent = '⏳';
+            label.textContent = 'Generating...';
+            topBtn.disabled = true;
+        } else {
+            icon.textContent = '✨';
+            label.textContent = 'Continue';
+            topBtn.disabled = false;
+        }
+    }
 }
 
 // Beautiful character-by-character streaming effect

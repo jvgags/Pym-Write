@@ -1516,3 +1516,90 @@ textarea {
     0%, 100% { opacity: 0.95; }
     50% { opacity: 0.8; }
 }
+
+.floating-go-btn {
+    position: fixed !important;
+    background: linear-gradient(135deg, #00c853, #00bfa5) !important;
+    color: white;
+    padding: 12px 22px;
+    border-radius: 30px;
+    font-size: 14px;
+    font-weight: 700;
+    box-shadow: 0 8px 25px rgba(0, 200, 100, 0.4);
+    cursor: pointer;
+    z-index: 2147483647;
+    pointer-events: all;
+    white-space: nowrap;
+    user-select: none;
+    border: 1px solid rgba(255,255,255,0.3);
+    backdrop-filter: blur(12px);
+    transition: all 0.22s ease;
+}
+
+.floating-go-btn:hover {
+    transform: translateY(-3px) scale(1.08);
+    box-shadow: 0 14px 35px rgba(0, 200, 100, 0.5);
+}
+
+.floating-go-btn.ready {
+    animation: goPulse 2.5s infinite;
+}
+
+@keyframes goPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.9; }
+}
+
+.floating-continue-btn .btn-spinner,
+.floating-go-btn .btn-spinner {
+    display: none;
+    font-weight: 600;
+    animation: spin 1.5s linear infinite;
+    font-size: 14px;
+}
+
+.floating-continue-btn.generating .btn-text,
+.floating-go-btn.generating .btn-text {
+    display: none !important;
+}
+
+.floating-continue-btn.generating .btn-spinner,
+.floating-go-btn.generating .btn-spinner {
+    display: inline-block !important;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Optional: make it look even smoother */
+.floating-continue-btn.generating,
+.floating-go-btn.generating {
+    pointer-events: none;
+    opacity: 0.95;
+}
+
+.floating-continue-btn.flipped::after,
+.floating-go-btn.flipped::after {
+    content: '';
+    position: absolute;
+    bottom: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-left: 8px solid transparent;
+    border-right: 8px solid transparent;
+    border-top: 8px solid rgba(255,255,255,0.3);
+}
+
+.floating-continue-btn::after,
+.floating-go-btn::after {
+    content: '';
+    position: absolute;
+    top: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-left: 8px solid transparent;
+    border-right: 8px solid transparent;
+    border-bottom: 8px solid rgba(255,255,255,0.3);
+}

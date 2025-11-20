@@ -210,9 +210,16 @@
 
                     <div class="editor-container-new">
                         <div id="editor"></div>
-                            <!-- Floating Continue Button (appears at cursor) -->
+                            <!-- Floating Continue Button -->
                             <div id="floatingContinueBtn" class="floating-continue-btn" style="display:none;" onclick="continueFromCursor()">
-                                ✨ Continue from here
+                                <span class="btn-text">✨ Continue from here</span>
+                                <span class="btn-spinner" style="display:none;">⏳ Generating...</span>
+                            </div>
+
+                            <!-- Floating GO Button -->
+                            <div id="floatingGoBtn" class="floating-go-btn" style="display:none;" onclick="startFromScratch()">
+                                <span class="btn-text">🚀 Go – Start writing</span>
+                                <span class="btn-spinner" style="display:none;">⭮ Generating...</span>
                             </div>
                     </div>
                 </section>
