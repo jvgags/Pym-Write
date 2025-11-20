@@ -162,7 +162,10 @@ window.onload = async function() {
 
     // Hide floating button when clicking elsewhere
     document.addEventListener('click', (e) => {
-        if (!e.target.closest('#floatingContinueBtn') && !e.target.closest('.ql-editor')) {
+        // FIX: Added check for #floatingGoBtn so it doesn't close itself when clicked
+        if (!e.target.closest('#floatingContinueBtn') && 
+            !e.target.closest('#floatingGoBtn') && 
+            !e.target.closest('.ql-editor')) {
             hideFloatingContinueButton();
         }
     });
