@@ -126,6 +126,47 @@ window.onload = async function() {
         resetAutoSaveTimer();
     });
 
+        // Floating Continue button + Tab shortcut
+    quillEditor.on('selection-change', (range) => {
+        if (range) updateFloatingContinueButton();
+    });
+
+    quillEditor.on('text-change', () => {
+        hasUnsavedChanges = true;
+        updateWordCount();
+        resetAutoSaveTimer();
+        // Re-check button visibility after typing
+        setTimeout(updateFloatingContinueButton, 100);
+    });
+
+    // Tab key = Continue from cursor (best pro workflow)
+    quillEditor.keyboard.addBinding({
+        key: 'Tab',
+        handler: function(range, context) {
+            if (range.index > 40) {
+                continueFromCursor();
+                return false; // prevent actual tab
+            }
+        }
+    });
+
+    // Optional: Ctrl+Enter also continues
+    quillEditor.keyboard.addBinding({
+        key: 'Enter',
+        ctrlKey: true,
+        handler: function() {
+            continueFromCursor();
+            return false;
+        }
+    });
+
+    // Hide floating button when clicking elsewhere
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('#floatingContinueBtn') && !e.target.closest('.ql-editor')) {
+            hideFloatingContinueButton();
+        }
+    });
+
     // Check API key
     if (!apiKey || apiKey === 'null') {
         if (apiKey === 'null') {
@@ -1246,6 +1287,156 @@ async function continueStory() {
         continueBtn.disabled = false;
         continueBtn.innerHTML = '<span class="toolbar-icon">✨</span><span class="toolbar-label">Continue</span>';
     }
+}
+
+// NEW: Continue from cursor position (floating button or Tab)
+async function continueFromCursor() {
+    if (!apiKey) {
+        showToast('Please add an API key in Settings');
+        return;
+    }
+    if (!currentDocumentId) {
+        showToast('Please select a document first');
+        return;
+    }
+
+    const range = quillEditor.getSelection();
+    if (!range || range.index < 30) {
+        showToast('Place your cursor after some text to continue');
+        return;
+    }
+
+    hideFloatingContinueButton();
+
+    const currentText = quillEditor.getText();
+    if (currentText.trim().length < 50) {
+        showToast('Write a little more before continuing');
+        return;
+    }
+
+    // Visual feedback
+    const btn = document.getElementById('continueBtn');
+    const originalHTML = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="toolbar-icon">⏳</span><span class="toolbar-label">Generating...</span>';
+
+    try {
+        const model = document.getElementById('modelSelect').value;
+        const tokensToGenerate = parseInt(document.getElementById('tokensToGenerate').value);
+        const temperature = parseFloat(document.getElementById('temperature').value);
+        const contextNotes = document.getElementById('contextNotes').value;
+
+        const enabledDocs = documents
+            .filter(d => d.projectId === currentProjectId && d.enabled && d.id !== currentDocumentId)
+            .sort((a, b) => a.order - b.order);
+
+        let documentsContext = '';
+        if (enabledDocs.length > 0) {
+            documentsContext = '\n\nAdditional Context:\n' + enabledDocs.map(doc => {
+                const docText = new DOMParser().parseFromString(doc.content, 'text/html').body.textContent || '';
+                return `--- ${doc.type}: ${doc.title} ---\n${docText}\n`;
+            }).join('\n');
+        }
+
+        const recentText = currentText.slice(-4000);
+        const systemPrompt = getSystemPrompt(tokensToGenerate, contextNotes, documentsContext);
+        const userPrompt = getUserPrompt(recentText);
+
+        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`,
+                'HTTP-Referer': window.location.origin,
+                'X-Title': 'Pym Write'
+            },
+            body: JSON.stringify({
+                model: model,
+                messages: [
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: userPrompt }
+                ],
+                temperature: temperature,
+                max_tokens: tokensToGenerate,
+                stream: false
+            })
+        });
+
+        if (!response.ok) throw new Error(`API error: ${response.status}`);
+        const data = await response.json();
+        const aiText = data.choices[0].message.content.trim();
+
+        // Stream-type insertion at cursor
+        streamInsertAtCursor(aiText, range.index);
+
+    } catch (error) {
+        console.error('AI Error:', error);
+        showToast('Generation failed. Check API key and internet.');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalHTML;
+    }
+}
+
+// Show floating button when cursor is in a good spot
+function updateFloatingContinueButton() {
+    const range = quillEditor.getSelection();
+    const btn = document.getElementById('floatingContinueBtn');
+
+    if (!range || range.length > 0 || range.index < 50) {
+        btn.style.display = 'none';
+        return;
+    }
+
+    const textBefore = quillEditor.getText(0, range.index);
+    if (!textBefore.trim() || textBefore.trim().length < 50) {
+        btn.style.display = 'none';
+        return;
+    }
+
+    // THE REAL FIX: Quill's getBounds() is relative to the .ql-editor scrolling container
+    const bounds = quillEditor.getBounds(range.index);
+    const editorScrollContainer = document.querySelector('.ql-editor');
+
+    // Convert to viewport coordinates
+    const containerRect = editorScrollContainer.getBoundingClientRect();
+    const scrollTop = editorScrollContainer.scrollTop;
+    const scrollLeft = editorScrollContainer.scrollLeft;
+
+    const x = containerRect.left + bounds.left + scrollLeft + 12;
+    const y = containerRect.top + bounds.bottom + scrollTop + 8;
+
+    btn.style.position = 'fixed';
+    btn.style.left = x + 'px';
+    btn.style.top = y + 'px';
+    btn.style.display = 'block';
+    btn.classList.add('ready');
+}
+
+function hideFloatingContinueButton() {
+    const btn = document.getElementById('floatingContinueBtn');
+    btn.style.display = 'none';
+    btn.classList.remove('ready');
+}
+
+// Beautiful character-by-character streaming effect
+function streamInsertAtCursor(text, startIndex) {
+    let i = 0;
+    const interval = setInterval(() => {
+        if (i < text.length) {
+            const char = text[i];
+            quillEditor.insertText(startIndex + i, char, 'api');
+            i++;
+            quillEditor.setSelection(startIndex + i, 0);
+            // Auto-scroll to keep cursor in view
+            quillEditor.scrollIntoView();
+        } else {
+            clearInterval(interval);
+            hasUnsavedChanges = true;
+            updateWordCount();
+            showToast('Continued! ✨');
+        }
+    }, 16); // ~60 FPS typing feel
 }
 
 async function improveText() {
