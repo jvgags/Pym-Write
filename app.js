@@ -645,53 +645,37 @@ function updateDocumentsList() {
         }
     });
 
-    // Sort by order
+    // Sort ONLY by order (no grouping)
     projectDocs.sort((a, b) => a.order - b.order);
 
-    // Group documents by type
-    const groupedDocs = {};
-    projectDocs.forEach(doc => {
-        if (!groupedDocs[doc.type]) {
-            groupedDocs[doc.type] = [];
-        }
-        groupedDocs[doc.type].push(doc);
-    });
-
     let html = '';
-    Object.keys(groupedDocs).sort().forEach(type => {
-        html += `<div class="document-type-section">
-            <h4 class="document-type-header">${getTypeIcon(type)} ${type}</h4>`;
-        
-        groupedDocs[type].forEach(doc => {
-            const isActive = doc.id === currentDocumentId;
-            html += `
-                <div class="document-card ${doc.enabled ? 'enabled' : 'disabled'} ${isActive ? 'active-doc' : ''}" 
-                     draggable="true" 
-                     data-doc-id="${doc.id}"
-                     ondragstart="handleDragStart(event)" 
-                     ondragover="handleDragOver(event)" 
-                     ondrop="handleDrop(event)" 
-                     ondragend="handleDragEnd(event)"
-                     onclick="openDocumentInEditor(${doc.id})">
-                    <div class="document-header">
-                        <div class="drag-handle" title="Drag to reorder">⋮⋮</div>
-                        <label class="toggle-container" onclick="event.stopPropagation();">
-                            <input type="checkbox" ${doc.enabled ? 'checked' : ''} onchange="toggleDocument(${doc.id})">
-                            <span class="toggle-slider"></span>
-                        </label>
-                        <div class="document-title">
-                            <h4>${doc.title}</h4>
-                            <span class="document-meta">${doc.wordCount || 0} words</span>
-                        </div>
-                        <div class="document-actions">
-                            <button class="icon-btn delete-icon" onclick="event.stopPropagation(); deleteDocument(${doc.id})" title="Delete">🗑️</button>
-                        </div>
+    projectDocs.forEach(doc => {
+        const isActive = doc.id === currentDocumentId;
+        html += `
+            <div class="document-card ${doc.enabled ? 'enabled' : 'disabled'} ${isActive ? 'active-doc' : ''}" 
+                 draggable="true" 
+                 data-doc-id="${doc.id}"
+                 ondragstart="handleDragStart(event)" 
+                 ondragover="handleDragOver(event)" 
+                 ondrop="handleDrop(event)" 
+                 ondragend="handleDragEnd(event)"
+                 onclick="openDocumentInEditor(${doc.id})">
+                <div class="document-header">
+                    <div class="drag-handle" title="Drag to reorder">⋮⋮</div>
+                    <label class="toggle-container" onclick="event.stopPropagation();">
+                        <input type="checkbox" ${doc.enabled ? 'checked' : ''} onchange="toggleDocument(${doc.id})">
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <div class="document-title">
+                        <h4><span class="doc-type-icon">${getTypeIcon(doc.type)}</span> ${doc.title}</h4>
+                        <span class="document-meta">${doc.wordCount || 0} words • ${doc.type}</span>
+                    </div>
+                    <div class="document-actions">
+                        <button class="icon-btn delete-icon" onclick="event.stopPropagation(); deleteDocument(${doc.id})" title="Delete">🗑️</button>
                     </div>
                 </div>
-            `;
-        });
-        
-        html += '</div>';
+            </div>
+        `;
     });
 
     container.innerHTML = html;
@@ -700,7 +684,9 @@ function updateDocumentsList() {
 // Drag and Drop handlers
 function handleDragStart(e) {
     draggedElement = e.target.closest('.document-card');
-    draggedElement.style.opacity = '0.5';
+    if (!draggedElement) return;
+    
+    draggedElement.style.opacity = '0.4';
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/html', draggedElement.innerHTML);
 }
@@ -716,12 +702,16 @@ function handleDragOver(e) {
         const rect = target.getBoundingClientRect();
         const midpoint = rect.top + rect.height / 2;
         
+        // Clear all borders first
+        document.querySelectorAll('.document-card').forEach(card => {
+            card.style.borderTop = '';
+            card.style.borderBottom = '';
+        });
+        
         if (e.clientY < midpoint) {
-            target.style.borderTop = '2px solid var(--accent-primary)';
-            target.style.borderBottom = '';
+            target.style.borderTop = '3px solid var(--accent-primary)';
         } else {
-            target.style.borderBottom = '2px solid var(--accent-primary)';
-            target.style.borderTop = '';
+            target.style.borderBottom = '3px solid var(--accent-primary)';
         }
     }
     
@@ -742,22 +732,32 @@ function handleDrop(e) {
         const targetDoc = documents.find(d => d.id === targetId);
         
         if (draggedDoc && targetDoc && draggedDoc.projectId === targetDoc.projectId) {
-            // Get all docs in this project sorted by order
+            // Get all docs in this project sorted by current order
             const projectDocs = documents
                 .filter(d => d.projectId === draggedDoc.projectId)
-                .sort((a, b) => a.order - b.order);
+                .sort((a, b) => (a.order || 0) - (b.order || 0));
             
-            // Remove dragged doc from array
+            // Find current positions
             const draggedIndex = projectDocs.findIndex(d => d.id === draggedId);
-            projectDocs.splice(draggedIndex, 1);
-            
-            // Insert at new position
             const targetIndex = projectDocs.findIndex(d => d.id === targetId);
+            
+            // Remove dragged doc
+            const [removed] = projectDocs.splice(draggedIndex, 1);
+            
+            // Determine insert position based on mouse position
             const rect = target.getBoundingClientRect();
             const midpoint = rect.top + rect.height / 2;
-            const insertIndex = e.clientY < midpoint ? targetIndex : targetIndex + 1;
+            let insertIndex = targetIndex;
             
-            projectDocs.splice(insertIndex, 0, draggedDoc);
+            // If dragging from above to below, adjust index
+            if (draggedIndex < targetIndex) {
+                insertIndex = e.clientY < midpoint ? targetIndex - 1 : targetIndex;
+            } else {
+                insertIndex = e.clientY < midpoint ? targetIndex : targetIndex + 1;
+            }
+            
+            // Insert at new position
+            projectDocs.splice(insertIndex, 0, removed);
             
             // Reassign orders
             projectDocs.forEach((doc, index) => {
@@ -1102,11 +1102,30 @@ function previewAiRequest() {
 
 function showRequestPreview(requestBody) {
     const modal = document.getElementById('requestPreviewModal');
-    const content = document.getElementById('requestPreviewContent');
+    const apiContent = document.getElementById('requestPreviewContent');
+    const docsContent = document.getElementById('documentsPreviewContent');
     
+    // Format API request
     const formattedJson = JSON.stringify(requestBody, null, 2);
+    apiContent.textContent = formattedJson;
     
-    content.textContent = formattedJson;
+    // Format documents preview
+    const enabledDocs = documents
+        .filter(d => d.projectId === currentProjectId && d.enabled && d.id !== currentDocumentId)
+        .sort((a, b) => a.order - b.order);
+    
+    let docsPreview = '';
+    if (enabledDocs.length === 0) {
+        docsPreview = 'No enabled documents to preview.';
+    } else {
+        enabledDocs.forEach(doc => {
+            const docText = new DOMParser().parseFromString(doc.content, 'text/html').body.textContent || '';
+            docsPreview += `[${doc.title}:Start]\n\n${docText.trim()}\n\n[${doc.title}:End]\n\n`;
+        });
+    }
+    
+    docsContent.textContent = docsPreview.trim();
+    
     modal.style.display = 'flex';
 }
 
@@ -1115,12 +1134,24 @@ function closeRequestPreview() {
 }
 
 function copyRequestPreview() {
-    const content = document.getElementById('requestPreviewContent').textContent;
+    const activeTab = document.querySelector('.preview-tab-btn.active').dataset.tab;
+    const content = activeTab === 'api' 
+        ? document.getElementById('requestPreviewContent').textContent
+        : document.getElementById('documentsPreviewContent').textContent;
+    
     navigator.clipboard.writeText(content).then(() => {
-        showToast('Request copied to clipboard! 📋');
+        showToast('Copied to clipboard! 📋');
     }).catch(() => {
         showToast('Failed to copy');
     });
+}
+
+function switchPreviewTab(tabName) {
+    document.querySelectorAll('.preview-tab-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.preview-tab-content').forEach(content => content.classList.remove('active'));
+    
+    event.target.classList.add('active');
+    document.getElementById(`preview-${tabName}-tab`).classList.add('active');
 }
 
 async function continueStory() {
@@ -1363,6 +1394,132 @@ function copyAiText() {
     }).catch(() => {
         showToast('Failed to copy');
     });
+}
+
+/* ========== EDITOR FORMATTING ========== */
+
+function convertMarkdownToRichText() {
+    if (!currentDocumentId) {
+        showToast('Please select a document first');
+        return;
+    }
+    
+    const text = quillEditor.getText();
+    
+    if (!text || text.trim().length === 0) {
+        showToast('No text to convert');
+        return;
+    }
+    
+    // Get plain text
+    let markdown = text;
+    
+    // Clear editor
+    quillEditor.setText('');
+    
+    // Parse markdown and insert formatted content
+    const lines = markdown.split('\n');
+    let currentIndex = 0;
+    
+    lines.forEach((line, i) => {
+        // Headers
+        if (line.startsWith('### ')) {
+            quillEditor.insertText(currentIndex, line.substring(4), { header: 3 });
+            currentIndex += line.length - 4;
+        } else if (line.startsWith('## ')) {
+            quillEditor.insertText(currentIndex, line.substring(3), { header: 2 });
+            currentIndex += line.length - 3;
+        } else if (line.startsWith('# ')) {
+            quillEditor.insertText(currentIndex, line.substring(2), { header: 1 });
+            currentIndex += line.length - 2;
+        }
+        // Bold and Italic (simple patterns)
+        else if (line.includes('**') || line.includes('*')) {
+            let processedLine = line;
+            let insertedLength = 0;
+            
+            // Handle bold **text**
+            processedLine = processedLine.replace(/\*\*(.+?)\*\*/g, (match, p1) => {
+                quillEditor.insertText(currentIndex + insertedLength, p1, { bold: true });
+                insertedLength += p1.length;
+                return '';
+            });
+            
+            // Handle italic *text*
+            processedLine = processedLine.replace(/\*(.+?)\*/g, (match, p1) => {
+                quillEditor.insertText(currentIndex + insertedLength, p1, { italic: true });
+                insertedLength += p1.length;
+                return '';
+            });
+            
+            // Insert remaining text
+            if (processedLine.trim()) {
+                quillEditor.insertText(currentIndex + insertedLength, processedLine);
+                insertedLength += processedLine.length;
+            }
+            
+            currentIndex += insertedLength;
+        }
+        // Regular text
+        else {
+            quillEditor.insertText(currentIndex, line);
+            currentIndex += line.length;
+        }
+        
+        // Add newline except for last line
+        if (i < lines.length - 1) {
+            quillEditor.insertText(currentIndex, '\n');
+            currentIndex += 1;
+        }
+    });
+    
+    hasUnsavedChanges = true;
+    showToast('Markdown converted! ✨');
+}
+
+function formatForFiction() {
+    if (!currentDocumentId) {
+        showToast('Please select a document first');
+        return;
+    }
+    
+    const text = quillEditor.getText();
+    
+    if (!text || text.trim().length === 0) {
+        showToast('No text to format');
+        return;
+    }
+    
+    // Clear current formatting
+    quillEditor.removeFormat(0, quillEditor.getLength());
+    
+    // Get all paragraphs
+    const paragraphs = text.split('\n\n');
+    
+    // Clear editor
+    quillEditor.setText('');
+    
+    let currentIndex = 0;
+    
+    paragraphs.forEach((para, i) => {
+        const trimmed = para.trim();
+        if (!trimmed) return;
+        
+        // Insert paragraph with indent
+        quillEditor.insertText(currentIndex, trimmed, {
+            indent: 1
+        });
+        currentIndex += trimmed.length;
+        
+        // Add double line break between paragraphs
+        if (i < paragraphs.length - 1) {
+            quillEditor.insertText(currentIndex, '\n\n');
+            currentIndex += 2;
+        }
+    });
+    
+    hasUnsavedChanges = true;
+    showToast('Formatted for fiction! 📖');
 }
 
 /* ========== SETTINGS ========== */

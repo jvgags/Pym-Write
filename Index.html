@@ -187,6 +187,15 @@
                             <span class="toolbar-label">Preview</span>
                         </button>
                         <div class="toolbar-divider"></div>
+                        <button class="toolbar-btn" onclick="convertMarkdownToRichText()" title="Convert Markdown to Rich Text">
+                            <span class="toolbar-icon">📝</span>
+                            <span class="toolbar-label">MD→Rich</span>
+                        </button>
+                        <button class="toolbar-btn" onclick="formatForFiction()" title="Format for Fiction (Indented Paragraphs)">
+                            <span class="toolbar-icon">📖</span>
+                            <span class="toolbar-label">Fiction</span>
+                        </button>
+                        <div class="toolbar-divider"></div>
                         <button class="toolbar-btn" onclick="saveDocument()" title="Save Document">
                             <span class="toolbar-icon">💾</span>
                             <span class="toolbar-label">Save</span>
@@ -372,13 +381,32 @@
     <div id="requestPreviewModal" class="modal" style="display:none;">
         <div class="modal-content preview-modal">
             <div class="preview-header">
-                <h3>🔍 OpenRouter API Request Preview</h3>
+                <h3>🔍 Preview</h3>
                 <button onclick="closeRequestPreview()" class="close-btn">✕</button>
             </div>
-            <p class="preview-description">This is exactly what will be sent to OpenRouter when you click "Continue Story":</p>
-            <div class="preview-code-container">
-                <pre id="requestPreviewContent" class="preview-code"></pre>
+            
+            <!-- Preview Tabs -->
+            <div class="preview-tabs">
+                <button class="preview-tab-btn active" data-tab="api" onclick="switchPreviewTab('api')">API Request</button>
+                <button class="preview-tab-btn" data-tab="documents" onclick="switchPreviewTab('documents')">Documents Context</button>
             </div>
+            
+            <!-- API Tab -->
+            <div id="preview-api-tab" class="preview-tab-content active">
+                <p class="preview-description">This is exactly what will be sent to OpenRouter:</p>
+                <div class="preview-code-container">
+                    <pre id="requestPreviewContent" class="preview-code"></pre>
+                </div>
+            </div>
+            
+            <!-- Documents Tab -->
+            <div id="preview-documents-tab" class="preview-tab-content">
+                <p class="preview-description">Enabled documents in order (as sent to AI):</p>
+                <div class="preview-code-container">
+                    <pre id="documentsPreviewContent" class="preview-code"></pre>
+                </div>
+            </div>
+            
             <div class="modal-buttons">
                 <button onclick="copyRequestPreview()" class="primary-btn">📋 Copy to Clipboard</button>
                 <button onclick="closeRequestPreview()" class="secondary-btn">Close</button>

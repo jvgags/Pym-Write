@@ -107,15 +107,6 @@ body {
     font-family: 'Courier New', Courier, monospace;
 }
 
-[data-theme="typewriter"] .ql-toolbar.ql-snow + .ql-container.ql-snow {
-   background-color: #FCF5E4;
-}
-
-[data-theme="typewriter"] .document-info {
-   background-color: #FCF5E4;
-}
-
-
 /* Ocean Blue Theme */
 [data-theme="ocean"] {
     --bg-primary: #e8f4f8;
@@ -525,18 +516,23 @@ body {
     overflow-y: auto;
 }
 
+.doc-type-icon {
+    margin-right: 4px;
+}
+
 .document-type-section {
-    margin-bottom: 20px;
+    margin-bottom: 15px;
 }
 
 .document-type-header {
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 700;
     color: var(--text-tertiary);
     text-transform: uppercase;
     margin-bottom: 8px;
     padding: 0 8px;
     letter-spacing: 0.5px;
+    display: none; /* Hidden since we're not grouping anymore */
 }
 
 .document-card {
@@ -756,6 +752,11 @@ body {
     line-height: 1.8;
     padding: 20px;
     min-height: 100%;
+}
+
+/* Fiction formatting styles */
+.ql-editor .ql-indent-1 {
+    text-indent: 2em;
 }
 
 .ql-toolbar {
@@ -1307,7 +1308,7 @@ textarea {
 
 /* Preview Modal Specific Styles */
 .preview-modal {
-    max-width: 800px;
+    max-width: 900px;
     width: 95%;
 }
 
@@ -1320,6 +1321,45 @@ textarea {
 
 .preview-header h3 {
     margin: 0;
+}
+
+/* Preview Tabs */
+.preview-tabs {
+    display: flex;
+    gap: 5px;
+    margin-bottom: 15px;
+    border-bottom: 2px solid var(--border-color);
+}
+
+.preview-tab-btn {
+    padding: 10px 20px;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    transition: all 0.2s;
+}
+
+.preview-tab-btn:hover {
+    color: var(--text-primary);
+    background: var(--bg-accent);
+}
+
+.preview-tab-btn.active {
+    color: var(--accent-primary);
+    border-bottom-color: var(--accent-primary);
+}
+
+.preview-tab-content {
+    display: none;
+}
+
+.preview-tab-content.active {
+    display: block;
 }
 
 .preview-description {
