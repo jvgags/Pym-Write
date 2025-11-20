@@ -31,6 +31,8 @@ let apiKey = localStorage.getItem('openrouterApiKey');
 let OPENROUTER_MODELS = [];
 let modelsLoaded = false;
 
+let isStreaming = false;
+
 // IndexedDB Setup
 const DB_NAME = 'AINovelWriterDB';
 const DB_VERSION = 3;
@@ -1404,6 +1406,9 @@ async function continueFromCursor() {
 
 // Show floating button when cursor is in a good spot
 function updateFloatingContinueButton() {
+
+    if (isStreaming) return;
+
     const range = quillEditor.getSelection();
     if (!range) return;
 
@@ -1601,21 +1606,21 @@ function showGeneratingState(isGenerating, isGoButton = false) {
 
 // Beautiful character-by-character streaming effect with auto-scroll
 function streamInsertAtCursor(text, startIndex) {
+    isStreaming = true; // <--- LOCK: Prevent button from appearing
+    
     let i = 0;
     const interval = setInterval(() => {
         if (i < text.length) {
             const char = text[i];
             quillEditor.insertText(startIndex + i, char, 'api');
             i++;
+            
             // Set cursor position
             const newPosition = startIndex + i;
             quillEditor.setSelection(newPosition, 0);
-
-            // Force scroll to cursor position and scroll the page down
-            // Scroll every few characters for smoothness
+            
+            // Force scroll to cursor position
             if (i % 5 === 0 || i === text.length) {
-                // MODIFICATION: Scroll the entire window to the bottom of the page
-                // document.documentElement.scrollHeight gives the maximum scroll position
                 window.scrollTo({
                     top: document.documentElement.scrollHeight,
                     behavior: 'smooth'
@@ -1623,11 +1628,16 @@ function streamInsertAtCursor(text, startIndex) {
             }
         } else {
             clearInterval(interval);
+            isStreaming = false; // <--- UNLOCK: Allow button to appear again
+            
             hasUnsavedChanges = true;
             updateWordCount();
             showToast('Continued! ✨');
+            
+            // Optional: Check button visibility once finished
+            setTimeout(updateFloatingContinueButton, 100);
         }
-    }, 16); // 16ms is roughly 60 FPS
+    }, 16); 
 }
 
 async function improveText() {
