@@ -37,6 +37,17 @@ const DB_VERSION = 3;
 const STORE_NAME = 'data';
 let db;
 
+// 1. Import the Block Embed
+const BlockEmbed = Quill.import('blots/block/embed');
+
+// 2. Create the Divider Class
+class DividerBlot extends BlockEmbed {}
+DividerBlot.blotName = 'divider'; // The name we use to insert it
+DividerBlot.tagName = 'hr';       // The HTML tag it corresponds to
+
+// 3. Register it with Quill
+Quill.register(DividerBlot);
+
 function openDB() {
     return new Promise((resolve, reject) => {
         const request = indexedDB.open(DB_NAME, DB_VERSION);
@@ -1059,10 +1070,10 @@ function previewAiRequest() {
 
     const currentText = quillEditor.getText();
 
-    if (currentText.trim().length < 50) {
-        showToast('Write at least 50 characters to preview');
-        return;
-    }
+    // if (currentText.trim().length < 50) {
+    //     showToast('Write at least 50 characters to preview');
+    //     return;
+    // }
 
     const model = document.getElementById('modelSelect').value;
     const tokensToGenerate = parseInt(document.getElementById('tokensToGenerate').value);
@@ -1411,70 +1422,18 @@ function convertMarkdownToRichText() {
         return;
     }
     
-    // Get plain text
-    let markdown = text;
-    
-    // Clear editor
+    const rawHtml = marked.parse(text, { breaks: true });
+
+    const cleanHtml = DOMPurify.sanitize(rawHtml); // Clean it before pasting
+
+     // Clear editor
+
     quillEditor.setText('');
-    
-    // Parse markdown and insert formatted content
-    const lines = markdown.split('\n');
-    let currentIndex = 0;
-    
-    lines.forEach((line, i) => {
-        // Headers
-        if (line.startsWith('### ')) {
-            quillEditor.insertText(currentIndex, line.substring(4), { header: 3 });
-            currentIndex += line.length - 4;
-        } else if (line.startsWith('## ')) {
-            quillEditor.insertText(currentIndex, line.substring(3), { header: 2 });
-            currentIndex += line.length - 3;
-        } else if (line.startsWith('# ')) {
-            quillEditor.insertText(currentIndex, line.substring(2), { header: 1 });
-            currentIndex += line.length - 2;
-        }
-        // Bold and Italic (simple patterns)
-        else if (line.includes('**') || line.includes('*')) {
-            let processedLine = line;
-            let insertedLength = 0;
-            
-            // Handle bold **text**
-            processedLine = processedLine.replace(/\*\*(.+?)\*\*/g, (match, p1) => {
-                quillEditor.insertText(currentIndex + insertedLength, p1, { bold: true });
-                insertedLength += p1.length;
-                return '';
-            });
-            
-            // Handle italic *text*
-            processedLine = processedLine.replace(/\*(.+?)\*/g, (match, p1) => {
-                quillEditor.insertText(currentIndex + insertedLength, p1, { italic: true });
-                insertedLength += p1.length;
-                return '';
-            });
-            
-            // Insert remaining text
-            if (processedLine.trim()) {
-                quillEditor.insertText(currentIndex + insertedLength, processedLine);
-                insertedLength += processedLine.length;
-            }
-            
-            currentIndex += insertedLength;
-        }
-        // Regular text
-        else {
-            quillEditor.insertText(currentIndex, line);
-            currentIndex += line.length;
-        }
+
+    quillEditor.clipboard.dangerouslyPasteHTML(0, cleanHtml);
         
-        // Add newline except for last line
-        if (i < lines.length - 1) {
-            quillEditor.insertText(currentIndex, '\n');
-            currentIndex += 1;
-        }
-    });
-    
-    hasUnsavedChanges = true;
-    showToast('Markdown converted! ✨');
+        hasUnsavedChanges = true;
+        showToast('Markdown converted! ✨');
 }
 
 function formatForFiction() {
