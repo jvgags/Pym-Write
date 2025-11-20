@@ -1566,7 +1566,7 @@ function showGeneratingState(isGenerating, isGoButton = false) {
     }
 }
 
-// Beautiful character-by-character streaming effect
+// Beautiful character-by-character streaming effect with auto-scroll
 function streamInsertAtCursor(text, startIndex) {
     let i = 0;
     const interval = setInterval(() => {
@@ -1574,16 +1574,27 @@ function streamInsertAtCursor(text, startIndex) {
             const char = text[i];
             quillEditor.insertText(startIndex + i, char, 'api');
             i++;
-            quillEditor.setSelection(startIndex + i, 0);
-            // Auto-scroll to keep cursor in view
-            quillEditor.scrollIntoView();
+            // Set cursor position
+            const newPosition = startIndex + i;
+            quillEditor.setSelection(newPosition, 0);
+
+            // Force scroll to cursor position and scroll the page down
+            // Scroll every few characters for smoothness
+            if (i % 5 === 0 || i === text.length) {
+                // MODIFICATION: Scroll the entire window to the bottom of the page
+                // document.documentElement.scrollHeight gives the maximum scroll position
+                window.scrollTo({
+                    top: document.documentElement.scrollHeight,
+                    behavior: 'smooth'
+                });
+            }
         } else {
             clearInterval(interval);
             hasUnsavedChanges = true;
             updateWordCount();
             showToast('Continued! ✨');
         }
-    }, 16); // ~60 FPS typing feel
+    }, 16); // 16ms is roughly 60 FPS
 }
 
 async function improveText() {
