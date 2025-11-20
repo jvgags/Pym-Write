@@ -107,6 +107,13 @@ body {
     font-family: 'Courier New', Courier, monospace;
 }
 
+[data-theme="typewriter"] 
+    .ql-editor,
+    .document-info,
+    .project-card {
+   background-color: #FCF5E4 !important;
+}
+
 /* Ocean Blue Theme */
 [data-theme="ocean"] {
     --bg-primary: #e8f4f8;
@@ -752,6 +759,7 @@ body {
     line-height: 1.8;
     padding: 20px;
     min-height: 100%;
+    background-color: #FCF5E4;
 }
 
 /* Fiction formatting styles */
@@ -1084,7 +1092,7 @@ textarea {
 
 .document-card {
     background: var(--bg-tertiary);
-    padding: 18px;
+    padding: 10px;
     border-radius: 12px;
     margin-bottom: 12px;
     border-left: 4px solid var(--accent-primary);
@@ -1101,7 +1109,7 @@ textarea {
     display: flex;
     align-items: center;
     gap: 12px;
-    margin-bottom: 10px;
+    /* margin-bottom: 10px; */
 }
 
 .document-title {
@@ -1474,3 +1482,4 @@ textarea {
         flex-wrap: wrap;
     }
 }
+
