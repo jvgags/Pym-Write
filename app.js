@@ -1290,6 +1290,10 @@ async function continueStory() {
 }
 
 // NEW: Continue from cursor position (floating button or Tab)
+// app.js
+
+// app.js
+
 async function continueFromCursor() {
     if (!apiKey) {
         showToast('Please add an API key in Settings');
@@ -1306,20 +1310,28 @@ async function continueFromCursor() {
         return;
     }
 
-    hideFloatingContinueButton();
+    // --- FIX STARTS HERE ---
+    // 1. DO NOT hide the button yet. We want to see the spinner.
+    // hideFloatingContinueButton(); <--- DELETED THIS LINE
+
+    // 2. Trigger the spinner visual state
     showGeneratingState(true);
+    // --- FIX ENDS HERE ---
 
     const currentText = quillEditor.getText();
     if (currentText.trim().length < 50) {
         showToast('Write a little more before continuing');
+        showGeneratingState(false); // Reset if validation fails
         return;
     }
 
-    // Visual feedback
-    const btn = document.getElementById('continueBtn');
-    const originalHTML = btn.innerHTML;
-    btn.disabled = true;
-    btn.innerHTML = '<span class="toolbar-icon">⏳</span><span class="toolbar-label">Generating...</span>';
+    // Visual feedback for the top toolbar (syncs both buttons)
+    const topBtn = document.getElementById('continueBtn');
+    const originalTopHTML = topBtn ? topBtn.innerHTML : '';
+    if (topBtn) {
+        topBtn.disabled = true;
+        topBtn.innerHTML = '<span class="toolbar-icon">⏳</span><span class="toolbar-label">Generating...</span>';
+    }
 
     try {
         const model = document.getElementById('modelSelect').value;
@@ -1367,6 +1379,10 @@ async function continueFromCursor() {
         const data = await response.json();
         const aiText = data.choices[0].message.content.trim();
 
+        // --- FIX STEP 3 ---
+        // NOW we hide the button, just before we start typing the text
+        hideFloatingContinueButton();
+        
         // Stream-type insertion at cursor
         streamInsertAtCursor(aiText, range.index);
 
@@ -1374,8 +1390,11 @@ async function continueFromCursor() {
         console.error('AI Error:', error);
         showToast('Generation failed. Check API key and internet.');
     } finally {
-        btn.disabled = false;
-        btn.innerHTML = originalHTML;
+        // Reset states
+        if (topBtn) {
+            topBtn.disabled = false;
+            topBtn.innerHTML = originalTopHTML;
+        }
         showGeneratingState(false);
     }
 }
@@ -1447,15 +1466,23 @@ function positionFloatingButton(btn, range) {
     btn.style.top = y + 'px';
 }
 
-async function startFromScratch() {
-    hideFloatingContinueButton();
+// app.js
 
+// app.js
+
+async function startFromScratch() {
+    // --- FIX 1: Do NOT hide the button immediately ---
+    // hideFloatingContinueButton(); <--- REMOVED
+
+    // Show the spinner on the "Go" button (true = generating, true = isGoButton)
     showGeneratingState(true, true);
 
-    document.getElementById('floatingGoBtn').style.display = 'none';
+    // --- FIX 2: Do NOT manually hide the button element ---
+    // document.getElementById('floatingGoBtn').style.display = 'none'; <--- REMOVED
 
     if (!apiKey) {
         showToast('Add your OpenRouter API key in Settings');
+        showGeneratingState(false, true); // Reset state
         return;
     }
 
@@ -1487,7 +1514,7 @@ ${fullContext}`;
     const userPrompt = "Begin the story now.";
 
     try {
-        document.getElementById('floatingGoBtn').textContent = '🚀 Generating...';
+        // Note: We rely on showGeneratingState for the visual update now, not textContent assignment
 
         const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
             method: 'POST',
@@ -1513,16 +1540,19 @@ ${fullContext}`;
         const data = await response.json();
         const generatedText = data.choices[0].message.content.trim();
 
+        // --- FIX 3: Hide the button NOW, just before streaming starts ---
+        hideFloatingContinueButton();
+
         // Stream from the very beginning
         streamInsertAtCursor(generatedText, 0);
 
     } catch (err) {
         console.error(err);
         showToast('Failed to start. Check API key.');
-        document.getElementById('floatingGoBtn').textContent = '🚀 Go – Start writing';
+        // If it fails, the button stays visible so they can click it again
     } finally {
+        // Remove the spinner state (if the button is still visible, it goes back to "Go")
         showGeneratingState(false, true);  
-        document.querySelector('#floatingGoBtn .btn-text').textContent = '🚀 Go – Start writing';
     }
 }
 
