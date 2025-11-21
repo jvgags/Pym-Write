@@ -107,6 +107,11 @@ window.onload = async function() {
         showToast('Failed to open database.');
     }
 
+    // Ensure localStorage is synced with the loaded database settings
+    if (settings.theme) {
+        localStorage.setItem('pymTheme', settings.theme);
+    }
+
     // Initialize Quill Editor
     quillEditor = new Quill('#editor', {
         theme: 'snow',
@@ -383,6 +388,11 @@ async function restoreFromBackup(file) {
             projects = data.projects || [];
             documents = data.documents || [];
             settings = { ...settings, ...(data.settings || {}) };
+
+            // Sync imported theme to localStorage
+            if (settings.theme) {
+                localStorage.setItem('pymTheme', settings.theme);
+            }
 
             await autoSave();
 
@@ -2109,6 +2119,10 @@ function closeSettingsModal() {
 
 function saveSettings() {
     settings.theme = document.getElementById('themeSelect').value;
+
+    // Save to localStorage for instant load on next visit
+    localStorage.setItem('pymTheme', settings.theme);
+
     settings.fontSize = parseInt(document.getElementById('fontSizeSelect').value);
     settings.autoSaveInterval = parseInt(document.getElementById('autoSaveInterval').value);
     

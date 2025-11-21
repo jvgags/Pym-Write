@@ -107,11 +107,12 @@ body {
     font-family: 'Courier New', Courier, monospace;
 }
 
-[data-theme="typewriter"] 
-    .ql-editor,
-    .document-info,
-    .project-card {
-   background-color: #FCF5E4 !important;
+[data-theme="typewriter"] {
+        .ql-editor,
+        .document-info,
+        .project-card {
+    background-color: #FCF5E4 !important;
+    }
 }
 
 /* Ocean Blue Theme */
@@ -653,7 +654,7 @@ body {
 .document-info {
     margin-bottom: 20px;
     padding: 15px;
-    background: var(--bg-tertiary);
+    background: var(--bg-tertiary) !important;
     border-radius: 8px;
     border-left: 4px solid var(--accent-primary);
 }
@@ -759,7 +760,7 @@ body {
     line-height: 1.8;
     padding: 20px;
     min-height: 100%;
-    background-color: #FCF5E4;
+    background-color: var(--bg-tertiary) !important;
 }
 
 /* Fiction formatting styles */
@@ -958,7 +959,7 @@ textarea {
 
 /* Project Cards */
 .project-card {
-    background: var(--bg-tertiary);
+    background: var(--bg-tertiary) !important;
     padding: 20px;
     border-radius: 12px;
     margin-bottom: 16px;

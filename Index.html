@@ -12,6 +12,15 @@
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js"></script>
     <script src="https://unpkg.com/turndown/dist/turndown.js"></script>
+
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('pymTheme');
+            if (savedTheme && savedTheme !== 'default') {
+                document.documentElement.setAttribute('data-theme', savedTheme);
+            }
+        })();
+    </script>
 </head>
 <body>
     <!-- Toast Notification -->
@@ -39,7 +48,7 @@
         <div class="hamburger" id="hamburger">
             <span></span><span></span><span></span>
         </div>
-        <h1>📚 Pym Write</h1>
+        <h1>🪶 Pym Write</h1>
         <div class="word-count-display">
             <span id="wordCount">0</span> words
         </div>
