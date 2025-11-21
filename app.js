@@ -461,25 +461,38 @@ function deleteProject(id) {
     showToast('Project deleted');
 }
 
+// app.js
+
 function switchProject() {
     const projectId = parseInt(document.getElementById('projectSelect').value);
-    if (!projectId) {
-        currentProjectId = null;
-        currentDocumentId = null;
-        document.getElementById('documentInfo').style.display = 'none';
-        document.getElementById('editor').value = '';
-        updateDocumentsList();
-        return;
+    
+    // 1. Clear the Editor correctly (Quill method)
+    if (quillEditor) {
+        quillEditor.setText(''); // This actually clears the text
     }
 
-    currentProjectId = projectId;
+    // 2. Hide the Document Info Header
+    const docInfo = document.getElementById('documentInfo');
+    if (docInfo) {
+        docInfo.style.display = 'none';
+    }
+
+    // 3. Reset Current Document State
     currentDocumentId = null;
-    settings.lastProjectId = projectId;
+    settings.lastDocumentId = null; // Also clear the saved preference
+
+    // 4. Handle "No Project Selected" or "New Project" logic
+    if (!projectId) {
+        currentProjectId = null;
+        settings.lastProjectId = null;
+    } else {
+        currentProjectId = projectId;
+        settings.lastProjectId = projectId;
+    }
+
+    // 5. Refresh Data & UI
     autoSave();
-    
     updateDocumentsList();
-    document.getElementById('documentInfo').style.display = 'none';
-    document.getElementById('editor').value = '';
 }
 
 function updateProjectDropdown() {
