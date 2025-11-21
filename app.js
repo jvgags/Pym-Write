@@ -112,17 +112,33 @@ window.onload = async function() {
         theme: 'snow',
         placeholder: 'Select a document from the sidebar to start writing...',
         modules: {
-            toolbar: [
-                [{ 'header': [1, 2, 3, false] }],
-                ['bold', 'italic', 'underline', 'strike'],
-                [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                [{ 'indent': '-1'}, { 'indent': '+1' }],
-                ['blockquote', 'code-block'],
-                [{ 'align': [] }],
-                ['clean']
-            ]
+            toolbar: {
+                // Define the toolbar buttons
+                container: [
+                    [{ 'header': [1, 2, 3, false] }],
+                    ['bold', 'italic', 'underline', 'strike'],
+                    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                    [{ 'indent': '-1'}, { 'indent': '+1' }],
+                    ['blockquote', 'code-block'],
+                    [{ 'align': [] }],
+                    // Add 'expand' to the end
+                    ['clean', 'expand'] 
+                ],
+                // Define what the 'expand' button does
+                handlers: {
+                    'expand': toggleExpand 
+                }
+            }
         }
     });
+
+    // INJECT ICON: Quill creates a blank button for custom types. 
+    // We must manually add the SVG icon immediately after init.
+    const expandBtn = document.querySelector('.ql-expand');
+    if (expandBtn) {
+        // Arrows pointing out icon
+        expandBtn.innerHTML = '<svg viewBox="0 0 18 18"> <polyline class="ql-stroke" points="10 8 10 2 16 2"></polyline> <polyline class="ql-stroke" points="8 10 8 16 2 16"></polyline> <line class="ql-stroke" x1="10" x2="16" y1="8" y2="2"></line> <line class="ql-stroke" x1="8" x2="2" y1="10" y2="16"></line> </svg>';
+    }
 
     // Quill change listener
     quillEditor.on('text-change', () => {
@@ -2106,4 +2122,23 @@ function showToast(message, duration = 3000) {
     toast.textContent = message;
     toast.classList.add('show');
     setTimeout(() => toast.classList.remove('show'), duration);
+}
+
+function toggleExpand() {
+    document.body.classList.toggle('expanded-mode');
+    
+    // Optional: Update icon based on state
+    const btn = document.querySelector('.ql-expand');
+    const isExpanded = document.body.classList.contains('expanded-mode');
+    
+    if (btn) {
+        if (isExpanded) {
+            // Icon for "Collapse" (Arrows pointing in)
+            btn.innerHTML = '<svg viewBox="0 0 18 18"> <polyline class="ql-stroke" points="12 6 12 12 6 12"></polyline> <polyline class="ql-stroke" points="6 12 6 6 12 6"></polyline> </svg>';
+            showToast('Full screen mode');
+        } else {
+            // Icon for "Expand" (Arrows pointing out)
+            btn.innerHTML = '<svg viewBox="0 0 18 18"> <polyline class="ql-stroke" points="10 8 10 2 16 2"></polyline> <polyline class="ql-stroke" points="8 10 8 16 2 16"></polyline> <line class="ql-stroke" x1="10" x2="16" y1="8" y2="2"></line> <line class="ql-stroke" x1="8" x2="2" y1="10" y2="16"></line> </svg>';
+        }
+    }
 }

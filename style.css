@@ -1739,3 +1739,31 @@ textarea {
     font-size: 14px;
     letter-spacing: 0.5px;
 }
+
+
+/* Expanded Mode: Hide Sidebar */
+body.expanded-mode .sidebar-panel {
+    display: none !important;
+}
+
+/* Expanded Mode: Make Grid Single Column */
+body.expanded-mode .editor-layout-new {
+    grid-template-columns: 1fr !important;
+}
+
+/* Optional: Smooth transition for the editor area */
+.editor-layout-new {
+    transition: grid-template-columns 0.3s ease;
+}
+
+/* Style the Expand Button to push it to the right */
+.ql-expand {
+    float: right !important;
+    margin-left: auto !important;
+}
+
+/* Ensure the SVG inside the button looks like other Quill icons */
+.ql-expand svg {
+    width: 18px;
+    height: 18px;
+}
