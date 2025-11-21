@@ -1409,8 +1409,13 @@ async function continueFromCursor() {
 
 // Show floating button when cursor is in a good spot
 function updateFloatingContinueButton() {
-
     if (isStreaming) return;
+    
+    // Don't show if Accept/Reject buttons are visible
+    const acceptRejectContainer = document.getElementById('acceptRejectContainer');
+    if (acceptRejectContainer && acceptRejectContainer.style.display === 'flex') {
+        return;
+    }
 
     const range = quillEditor.getSelection();
     if (!range) return;
@@ -1704,6 +1709,9 @@ function showAcceptRejectButtons() {
         container.style.display = 'flex';
         setTimeout(() => container.classList.add('visible'), 10);
     }
+    
+    // Hide floating continue button while Accept/Reject is visible
+    hideFloatingContinueButton();
 }
 
 function hideAcceptRejectButtons() {
