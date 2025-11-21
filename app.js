@@ -528,19 +528,40 @@ function updateProjectsList() {
         return;
     }
 
-    container.innerHTML = projects.map(project => {
+    // Ensure all projects have an order
+    projects.forEach((project, index) => {
+        if (project.order === undefined) {
+            project.order = index;
+        }
+    });
+
+    // Sort by order
+    const sortedProjects = [...projects].sort((a, b) => (a.order || 0) - (b.order || 0));
+
+    container.innerHTML = sortedProjects.map(project => {
         const projectDocs = documents.filter(d => d.projectId === project.id);
         const totalWords = projectDocs.reduce((sum, doc) => sum + (doc.wordCount || 0), 0);
         project.currentWordCount = totalWords;
 
         return `
-            <div class="project-card">
+            <div class="project-card" 
+                 draggable="true" 
+                 data-project-id="${project.id}"
+                 ondragstart="handleProjectDragStart(event)"
+                 ondragover="handleProjectDragOver(event)"
+                 ondrop="handleProjectDrop(event)"
+                 ondragend="handleProjectDragEnd(event)">
                 <div class="project-header">
-                    <div>
-                        <h3>${project.title}</h3>
-                        <span class="genre-badge">${project.genre}</span>
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div class="drag-handle" title="Drag to reorder">⋮⋮</div>
+                        <div>
+                            <h3>${project.title}</h3>
+                            <span class="genre-badge">${project.genre}</span>
+                        </div>
                     </div>
                     <div class="project-actions">
+                        <button class="icon-btn" onclick="openEditProjectModal(${project.id})" title="Edit Project">✏️</button>
+                        <button class="icon-btn" onclick="copyProject(${project.id})" title="Copy Project">📋</button>
                         <button class="icon-btn" onclick="viewProjectDocuments(${project.id})" title="View Documents">📄</button>
                         <button class="icon-btn delete-icon" onclick="deleteProject(${project.id})" title="Delete">🗑️</button>
                     </div>
@@ -566,8 +587,6 @@ function updateProjectsList() {
         `;
     }).join('');
 }
-
-// app.js
 
 function viewProjectDocuments(projectId) {
     // 1. Set the new project
@@ -2299,4 +2318,209 @@ function addToolbarTooltips() {
         if (richToMdBtn) richToMdBtn.setAttribute('title', 'Convert Rich Text to Markdown');
 
     }, 500); // 500ms delay to ensure DOM is ready
+}
+
+/* ========== PROJECT EDITING ========== */
+
+function openEditProjectModal(projectId) {
+    const project = projects.find(p => p.id === projectId);
+    if (!project) return;
+    
+    document.getElementById('editProjectId').value = project.id;
+    document.getElementById('editProjectTitle').value = project.title;
+    document.getElementById('editProjectGenre').value = project.genre;
+    document.getElementById('editProjectDescription').value = project.description || '';
+    document.getElementById('editProjectWordCount').value = project.targetWordCount || 0;
+    
+    document.getElementById('editProjectModal').style.display = 'flex';
+    document.getElementById('editProjectTitle').focus();
+}
+
+function closeEditProjectModal() {
+    document.getElementById('editProjectModal').style.display = 'none';
+    document.getElementById('editProjectForm').reset();
+}
+
+function updateProject(event) {
+    event.preventDefault();
+    
+    const projectId = parseInt(document.getElementById('editProjectId').value);
+    const project = projects.find(p => p.id === projectId);
+    
+    if (!project) {
+        showToast('Project not found');
+        return;
+    }
+    
+    project.title = document.getElementById('editProjectTitle').value.trim();
+    project.genre = document.getElementById('editProjectGenre').value;
+    project.description = document.getElementById('editProjectDescription').value.trim();
+    project.targetWordCount = parseInt(document.getElementById('editProjectWordCount').value) || 0;
+    project.updated = new Date().toISOString();
+    
+    autoSave();
+    updateProjectsList();
+    updateProjectDropdown();
+    closeEditProjectModal();
+    showToast(`Project "${project.title}" updated! ✅`);
+}
+
+/* ========== PROJECT COPYING ========== */
+
+function copyProject(projectId) {
+    const project = projects.find(p => p.id === projectId);
+    if (!project) return;
+    
+    if (!confirm(`Create a copy of "${project.title}"?`)) return;
+    
+    // Create new project with copied data
+    const newProject = {
+        id: Date.now(),
+        title: `${project.title} (Copy)`,
+        genre: project.genre,
+        description: project.description,
+        targetWordCount: project.targetWordCount,
+        currentWordCount: 0,
+        order: projects.length, // Put at end
+        created: new Date().toISOString(),
+        updated: new Date().toISOString()
+    };
+    
+    projects.push(newProject);
+    
+    // Copy all documents from original project
+    const projectDocs = documents.filter(d => d.projectId === projectId);
+    projectDocs.forEach(doc => {
+        const newDoc = {
+            id: Date.now() + Math.random(), // Ensure unique ID
+            projectId: newProject.id,
+            title: doc.title,
+            type: doc.type,
+            content: doc.content,
+            wordCount: doc.wordCount,
+            enabled: doc.enabled,
+            order: doc.order,
+            created: new Date().toISOString(),
+            updated: new Date().toISOString()
+        };
+        documents.push(newDoc);
+    });
+    
+    autoSave();
+    updateProjectsList();
+    updateProjectDropdown();
+    showToast(`Project copied! Created "${newProject.title}" 📋`);
+}
+
+/* ========== PROJECT DRAG & DROP ========== */
+
+let draggedProject = null;
+
+function handleProjectDragStart(e) {
+    draggedProject = e.currentTarget;
+    draggedProject.style.opacity = '0.4';
+    e.dataTransfer.effectAllowed = 'move';
+}
+
+function handleProjectDragOver(e) {
+    if (e.preventDefault) {
+        e.preventDefault();
+    }
+    e.dataTransfer.dropEffect = 'move';
+    
+    const target = e.target.closest('.project-card');
+    if (target && target !== draggedProject) {
+        const rect = target.getBoundingClientRect();
+        const midpoint = rect.top + rect.height / 2;
+        
+        // Clear all borders first
+        document.querySelectorAll('.project-card').forEach(card => {
+            card.style.borderTop = '';
+            card.style.borderBottom = '';
+        });
+        
+        if (e.clientY < midpoint) {
+            target.style.borderTop = '3px solid var(--accent-primary)';
+        } else {
+            target.style.borderBottom = '3px solid var(--accent-primary)';
+        }
+    }
+    
+    return false;
+}
+
+function handleProjectDrop(e) {
+    if (e.stopPropagation) {
+        e.stopPropagation();
+    }
+    
+    const target = e.target.closest('.project-card');
+    if (draggedProject && target && draggedProject !== target) {
+        const draggedId = parseInt(draggedProject.dataset.projectId);
+        const targetId = parseInt(target.dataset.projectId);
+        
+        const draggedProj = projects.find(p => p.id === draggedId);
+        const targetProj = projects.find(p => p.id === targetId);
+        
+        if (draggedProj && targetProj) {
+            // Initialize order if missing
+            projects.forEach((p, idx) => {
+                if (p.order === undefined) p.order = idx;
+            });
+            
+            // Sort by current order
+            projects.sort((a, b) => (a.order || 0) - (b.order || 0));
+            
+            // Find current positions
+            const draggedIndex = projects.findIndex(p => p.id === draggedId);
+            const targetIndex = projects.findIndex(p => p.id === targetId);
+            
+            // Remove dragged project
+            const [removed] = projects.splice(draggedIndex, 1);
+            
+            // Determine insert position
+            const rect = target.getBoundingClientRect();
+            const midpoint = rect.top + rect.height / 2;
+            let insertIndex = targetIndex;
+            
+            if (draggedIndex < targetIndex) {
+                insertIndex = e.clientY < midpoint ? targetIndex - 1 : targetIndex;
+            } else {
+                insertIndex = e.clientY < midpoint ? targetIndex : targetIndex + 1;
+            }
+            
+            // Insert at new position
+            projects.splice(insertIndex, 0, removed);
+            
+            // Reassign orders
+            projects.forEach((p, index) => {
+                p.order = index;
+            });
+            
+            autoSave();
+            updateProjectsList();
+        }
+    }
+    
+    // Clear border indicators
+    document.querySelectorAll('.project-card').forEach(card => {
+        card.style.borderTop = '';
+        card.style.borderBottom = '';
+    });
+    
+    return false;
+}
+
+function handleProjectDragEnd(e) {
+    if (draggedProject) {
+        draggedProject.style.opacity = '1';
+    }
+    
+    // Clear all border indicators
+    document.querySelectorAll('.project-card').forEach(card => {
+        card.style.borderTop = '';
+        card.style.borderBottom = '';
+    });
+    
+    draggedProject = null;
 }
