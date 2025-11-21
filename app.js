@@ -32,6 +32,7 @@ let OPENROUTER_MODELS = [];
 let modelsLoaded = false;
 
 let isStreaming = false;
+let streamingInterval = null;
 
 // IndexedDB Setup
 const DB_NAME = 'AINovelWriterDB';
@@ -1606,10 +1607,11 @@ function showGeneratingState(isGenerating, isGoButton = false) {
 
 // Beautiful character-by-character streaming effect with auto-scroll
 function streamInsertAtCursor(text, startIndex) {
-    isStreaming = true; // <--- LOCK: Prevent button from appearing
+    isStreaming = true;
+    showStopButton(); // Show the stop button
     
     let i = 0;
-    const interval = setInterval(() => {
+    streamingInterval = setInterval(() => {
         if (i < text.length) {
             const char = text[i];
             quillEditor.insertText(startIndex + i, char, 'api');
@@ -1627,17 +1629,61 @@ function streamInsertAtCursor(text, startIndex) {
                 });
             }
         } else {
-            clearInterval(interval);
-            isStreaming = false; // <--- UNLOCK: Allow button to appear again
+            clearInterval(streamingInterval);
+            streamingInterval = null;
+            isStreaming = false;
+            hideStopButton(); // Hide the stop button
             
             hasUnsavedChanges = true;
             updateWordCount();
             showToast('Continued! ✨');
             
-            // Optional: Check button visibility once finished
             setTimeout(updateFloatingContinueButton, 100);
         }
     }, 16); 
+}
+
+// ADD these new functions:
+function showStopButton() {
+    const stopBtn = document.getElementById('stopGenerationBtn');
+    if (stopBtn) {
+        stopBtn.style.display = 'flex';
+        // Animate in
+        setTimeout(() => stopBtn.classList.add('visible'), 10);
+    }
+}
+
+function hideStopButton() {
+    const stopBtn = document.getElementById('stopGenerationBtn');
+    if (stopBtn) {
+        stopBtn.classList.remove('visible');
+        setTimeout(() => stopBtn.style.display = 'none', 300);
+    }
+}
+
+function stopGeneration() {
+    if (streamingInterval) {
+        clearInterval(streamingInterval);
+        streamingInterval = null;
+    }
+    
+    isStreaming = false;
+    hideStopButton();
+    hideFloatingContinueButton();
+    
+    // Reset button states
+    const topBtn = document.getElementById('continueBtn');
+    if (topBtn) {
+        topBtn.disabled = false;
+        topBtn.innerHTML = '<span class="toolbar-icon">✨</span><span class="toolbar-label">Continue</span>';
+    }
+    
+    showGeneratingState(false);
+    showGeneratingState(false, true);
+    
+    hasUnsavedChanges = true;
+    updateWordCount();
+    showToast('Generation stopped');
 }
 
 async function improveText() {
