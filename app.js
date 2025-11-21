@@ -2007,6 +2007,48 @@ function convertMarkdownToRichText() {
         showToast('Markdown converted! ✨');
 }
 
+function convertRichTextToMarkdown() {
+    if (!currentDocumentId) {
+        showToast('Please select a document first');
+        return;
+    }
+
+    // 1. Get the HTML content from Quill
+    // We use innerHTML to get the underlying tags (<strong>, <em>, etc.)
+    const htmlContent = quillEditor.root.innerHTML;
+
+    if (!htmlContent || htmlContent.trim() === '<p><br></p>') {
+        showToast('No text to convert');
+        return;
+    }
+
+    if (!window.TurndownService) {
+        showToast('Conversion library missing. Check internet connection.');
+        return;
+    }
+
+    // 2. Initialize the converter
+    const turndownService = new TurndownService({
+        headingStyle: 'atx', // Use # for headings instead of underlines
+        codeBlockStyle: 'fenced' // Use ``` for code blocks
+    });
+
+    // 3. Convert HTML to Markdown
+    try {
+        const markdown = turndownService.turndown(htmlContent);
+
+        // 4. Replace editor content with the raw Markdown
+        quillEditor.setText(markdown);
+
+        hasUnsavedChanges = true;
+        updateWordCount();
+        showToast('Converted to Markdown! 🔢');
+    } catch (e) {
+        console.error(e);
+        showToast('Conversion failed');
+    }
+}
+
 function formatForFiction() {
     if (!currentDocumentId) {
         showToast('Please select a document first');
@@ -2238,6 +2280,9 @@ function addToolbarTooltips() {
         setTitle('.ql-expand', 'Toggle Full Screen');
         setTitle('.ql-divider', 'Insert Divider'); 
         setTitle('.ql-md-to-rich', 'Convert Markdown'); // Example if you have this class
+
+        const richToMdBtn = document.querySelector('button[onclick="convertRichTextToMarkdown()"]');
+        if (richToMdBtn) richToMdBtn.setAttribute('title', 'Convert Rich Text to Markdown');
 
     }, 500); // 500ms delay to ensure DOM is ready
 }
