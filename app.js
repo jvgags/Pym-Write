@@ -181,6 +181,8 @@ window.onload = async function() {
         }
     });
 
+    addToolbarTooltips();
+
     // Hide floating button when clicking elsewhere
     document.addEventListener('click', (e) => {
         // FIX: Added check for #floatingGoBtn so it doesn't close itself when clicked
@@ -2141,4 +2143,63 @@ function toggleExpand() {
             btn.innerHTML = '<svg viewBox="0 0 18 18"> <polyline class="ql-stroke" points="10 8 10 2 16 2"></polyline> <polyline class="ql-stroke" points="8 10 8 16 2 16"></polyline> <line class="ql-stroke" x1="10" x2="16" y1="8" y2="2"></line> <line class="ql-stroke" x1="8" x2="2" y1="10" y2="16"></line> </svg>';
         }
     }
+}
+
+
+function addToolbarTooltips() {
+    // Use a small timeout to ensure Quill has finished rendering the HTML
+    setTimeout(() => {
+        const toolbar = document.querySelector('.ql-toolbar');
+        if (!toolbar) return;
+
+        // Helper to set title safely
+        const setTitle = (selector, title) => {
+            const el = toolbar.querySelector(selector);
+            if (el) el.setAttribute('title', title);
+        };
+
+        // --- STANDARD BUTTONS ---
+        setTitle('.ql-bold', 'Bold (Ctrl+B)');
+        setTitle('.ql-italic', 'Italic (Ctrl+I)');
+        setTitle('.ql-underline', 'Underline (Ctrl+U)');
+        setTitle('.ql-strike', 'Strikethrough');
+        setTitle('.ql-blockquote', 'Blockquote');
+        setTitle('.ql-code-block', 'Code Block');
+        setTitle('.ql-clean', 'Clear Formatting');
+        
+        // --- BUTTONS WITH VALUES ---
+        setTitle('.ql-list[value="ordered"]', 'Numbered List');
+        setTitle('.ql-list[value="bullet"]', 'Bulleted List');
+        setTitle('.ql-indent[value="-1"]', 'Decrease Indent');
+        setTitle('.ql-indent[value="+1"]', 'Increase Indent');
+        setTitle('.ql-script[value="sub"]', 'Subscript');
+        setTitle('.ql-script[value="super"]', 'Superscript');
+
+        // --- DROPDOWNS (PICKERS) ---
+        // These are special because they aren't simple buttons
+        
+        // 1. Header Dropdown
+        const headerPicker = toolbar.querySelector('.ql-header');
+        if (headerPicker) {
+            headerPicker.setAttribute('title', 'Paragraph Style / Heading');
+            
+            // Optional: Attempt to title the items inside the dropdown (only works if pre-rendered)
+            const options = headerPicker.querySelectorAll('.ql-picker-item');
+            options.forEach(opt => {
+                const val = opt.getAttribute('data-value');
+                if(val) opt.setAttribute('title', `Heading ${val}`);
+                else opt.setAttribute('title', 'Normal Text');
+            });
+        }
+
+        // 2. Align Dropdown
+        setTitle('.ql-align', 'Text Alignment');
+
+        // --- CUSTOM BUTTONS ---
+        // Ensure your custom buttons match these selectors
+        setTitle('.ql-expand', 'Toggle Full Screen');
+        setTitle('.ql-divider', 'Insert Divider'); 
+        setTitle('.ql-md-to-rich', 'Convert Markdown'); // Example if you have this class
+
+    }, 500); // 500ms delay to ensure DOM is ready
 }

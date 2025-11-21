@@ -1767,3 +1767,9 @@ body.expanded-mode .editor-layout-new {
     width: 18px;
     height: 18px;
 }
+
+/* Ensure tooltips appear when hovering over the icon */
+.ql-toolbar button svg,
+.ql-toolbar .ql-picker-label svg {
+    pointer-events: none;
+}
