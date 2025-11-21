@@ -1441,6 +1441,12 @@ async function continueFromCursor() {
 // Show floating button when cursor is in a good spot
 function updateFloatingContinueButton() {
     if (isStreaming) return;
+
+    // FIX: Immediately exit and hide buttons if no document is selected
+    if (!currentDocumentId) {
+        hideFloatingContinueButton();
+        return;
+    }
     
     // Don't show if Accept/Reject buttons are visible
     const acceptRejectContainer = document.getElementById('acceptRejectContainer');
