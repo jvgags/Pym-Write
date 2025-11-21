@@ -427,10 +427,23 @@
         </div>
     </div>
 
+    <!-- Stop Button -->
     <button id="stopGenerationBtn" class="stop-generation-btn" onclick="stopGeneration()" style="display:none;">
         <span class="stop-icon">⏹</span>
         <span class="stop-label">Stop Generation</span>
     </button>
+
+    <!-- Accept/Reject Buttons -->
+    <div id="acceptRejectContainer" class="accept-reject-container" style="display:none;">
+        <button class="accept-btn" onclick="acceptGeneratedText()">
+            <span class="btn-icon">✓</span>
+            <span class="btn-label">Accept</span>
+        </button>
+        <button class="reject-btn" onclick="rejectGeneratedText()">
+            <span class="btn-icon">✕</span>
+            <span class="btn-label">Reject</span>
+        </button>
+    </div>
 
     <script src="app.js"></script>
 </body>

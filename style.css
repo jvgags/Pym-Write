@@ -1604,6 +1604,7 @@ textarea {
     border-bottom: 8px solid rgba(255,255,255,0.3);
 }
 
+/* Stop Generation Button */
 .stop-generation-btn {
     position: fixed;
     bottom: 30px;
@@ -1654,4 +1655,87 @@ textarea {
 @keyframes pulse {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.7; }
+}
+
+/* Accept/Reject Container */
+.accept-reject-container {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    display: flex;
+    gap: 15px;
+    z-index: 2147483646;
+    opacity: 0;
+    transition: all 0.3s ease;
+}
+
+.accept-reject-container.visible {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+}
+
+/* Accept Button */
+.accept-btn {
+    background: linear-gradient(135deg, #4caf50, #388e3c);
+    color: white;
+    padding: 14px 28px;
+    border: none;
+    border-radius: 30px;
+    font-size: 15px;
+    font-weight: 700;
+    box-shadow: 0 8px 25px rgba(76, 175, 80, 0.4);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: all 0.3s ease;
+}
+
+.accept-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 30px rgba(76, 175, 80, 0.6);
+    background: linear-gradient(135deg, #66bb6a, #43a047);
+}
+
+.accept-btn:active {
+    transform: translateY(-1px);
+}
+
+/* Reject Button */
+.reject-btn {
+    background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+    color: white;
+    padding: 14px 28px;
+    border: none;
+    border-radius: 30px;
+    font-size: 15px;
+    font-weight: 700;
+    box-shadow: 0 8px 25px rgba(255, 107, 107, 0.4);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: all 0.3s ease;
+}
+
+.reject-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 30px rgba(255, 107, 107, 0.6);
+    background: linear-gradient(135deg, #ff8787, #ff5252);
+}
+
+.reject-btn:active {
+    transform: translateY(-1px);
+}
+
+/* Button Icons and Labels */
+.accept-reject-container .btn-icon {
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.accept-reject-container .btn-label {
+    font-size: 14px;
+    letter-spacing: 0.5px;
 }

@@ -33,6 +33,8 @@ let modelsLoaded = false;
 
 let isStreaming = false;
 let streamingInterval = null;
+let generatedTextStartIndex = null;
+let generatedTextLength = 0;
 
 // IndexedDB Setup
 const DB_NAME = 'AINovelWriterDB';
@@ -1608,14 +1610,20 @@ function showGeneratingState(isGenerating, isGoButton = false) {
 // Beautiful character-by-character streaming effect with auto-scroll
 function streamInsertAtCursor(text, startIndex) {
     isStreaming = true;
-    showStopButton(); // Show the stop button
+    showStopButton();
+    
+    // Store the starting position and reset length
+    generatedTextStartIndex = startIndex;
+    generatedTextLength = 0;
     
     let i = 0;
     streamingInterval = setInterval(() => {
         if (i < text.length) {
             const char = text[i];
-            quillEditor.insertText(startIndex + i, char, 'api');
+            // Insert with purple color formatting
+            quillEditor.insertText(startIndex + i, char, { color: '#9b59b6' });
             i++;
+            generatedTextLength = i;
             
             // Set cursor position
             const newPosition = startIndex + i;
@@ -1632,13 +1640,13 @@ function streamInsertAtCursor(text, startIndex) {
             clearInterval(streamingInterval);
             streamingInterval = null;
             isStreaming = false;
-            hideStopButton(); // Hide the stop button
+            hideStopButton();
+            
+            // Show Accept/Reject buttons
+            showAcceptRejectButtons();
             
             hasUnsavedChanges = true;
             updateWordCount();
-            showToast('Continued! ✨');
-            
-            setTimeout(updateFloatingContinueButton, 100);
         }
     }, 16); 
 }
@@ -1648,7 +1656,6 @@ function showStopButton() {
     const stopBtn = document.getElementById('stopGenerationBtn');
     if (stopBtn) {
         stopBtn.style.display = 'flex';
-        // Animate in
         setTimeout(() => stopBtn.classList.add('visible'), 10);
     }
 }
@@ -1681,10 +1688,72 @@ function stopGeneration() {
     showGeneratingState(false);
     showGeneratingState(false, true);
     
+    // Show Accept/Reject buttons for partial generation
+    if (generatedTextLength > 0) {
+        showAcceptRejectButtons();
+    }
+    
     hasUnsavedChanges = true;
     updateWordCount();
     showToast('Generation stopped');
 }
+
+function showAcceptRejectButtons() {
+    const container = document.getElementById('acceptRejectContainer');
+    if (container) {
+        container.style.display = 'flex';
+        setTimeout(() => container.classList.add('visible'), 10);
+    }
+}
+
+function hideAcceptRejectButtons() {
+    const container = document.getElementById('acceptRejectContainer');
+    if (container) {
+        container.classList.remove('visible');
+        setTimeout(() => container.style.display = 'none', 300);
+    }
+}
+
+function acceptGeneratedText() {
+    if (generatedTextStartIndex !== null && generatedTextLength > 0) {
+        // Remove purple color formatting - make text black
+        quillEditor.formatText(generatedTextStartIndex, generatedTextLength, { color: false });
+    }
+    
+    // Reset tracking variables
+    generatedTextStartIndex = null;
+    generatedTextLength = 0;
+    
+    hideAcceptRejectButtons();
+    showToast('Text accepted! ✨');
+    
+    // Allow continue button to appear again
+    setTimeout(updateFloatingContinueButton, 100);
+}
+
+function rejectGeneratedText() {
+    if (generatedTextStartIndex !== null && generatedTextLength > 0) {
+        // Delete the generated text
+        quillEditor.deleteText(generatedTextStartIndex, generatedTextLength);
+        
+        // Set cursor back to start position
+        quillEditor.setSelection(generatedTextStartIndex, 0);
+    }
+    
+    // Reset tracking variables
+    generatedTextStartIndex = null;
+    generatedTextLength = 0;
+    
+    hideAcceptRejectButtons();
+    showToast('Text rejected');
+    
+    hasUnsavedChanges = true;
+    updateWordCount();
+    
+    // Allow continue button to appear again
+    setTimeout(updateFloatingContinueButton, 100);
+}
+
 
 async function improveText() {
     if (!apiKey) {
