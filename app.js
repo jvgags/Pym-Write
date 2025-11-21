@@ -557,16 +557,35 @@ function updateProjectsList() {
     }).join('');
 }
 
+// app.js
+
 function viewProjectDocuments(projectId) {
+    // 1. Set the new project
     currentProjectId = projectId;
     document.getElementById('projectSelect').value = projectId;
     
-    // Switch to write tab
+    // 2. CLEAR PREVIOUS DOCUMENT STATE (The Fix)
+    currentDocumentId = null;
+    settings.lastDocumentId = null;
+    
+    // 3. Hide the Document Header
+    const docInfo = document.getElementById('documentInfo');
+    if (docInfo) {
+        docInfo.style.display = 'none';
+    }
+
+    // 4. Clear the Editor Content
+    if (quillEditor) {
+        quillEditor.setText('');
+    }
+    
+    // 5. Switch to Write Tab
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
     document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
     document.querySelector('.tab-btn:first-child').classList.add('active');
     document.getElementById('write-tab').classList.add('active');
     
+    // 6. Refresh Lists
     updateDocumentsList();
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
