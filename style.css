@@ -477,7 +477,7 @@ body {
 
 .sidebar-tab-btn {
     flex: 1;
-    padding: 10px 12px;
+    padding: 10px 10px;
     border: none;
     background: transparent;
     color: var(--text-secondary);
@@ -1991,4 +1991,39 @@ body.expanded-mode .editor-layout-new {
         opacity: 1;
         transform: scale(1);
     }
+}
+
+/* style.css */
+
+/* Update the button layout to handle the icon */
+.sidebar-tab-btn {
+    display: flex;           /* Aligns icon and text */
+    align-items: center;     /* Vertically centers them */
+    justify-content: center; /* Horizontally centers them */
+    gap: 8px;                /* Space between icon and text */
+    /* ... keep your existing padding/border styles ... */
+}
+
+
+.tab-icon {
+    width: 20px; /* Adjusted for your larger SVG */
+    height: 20px;
+    fill: currentColor; /* This makes the icon color match the text! */
+    flex-shrink: 0;
+}
+
+/* Optional: Adjust icon color specifically when active */
+.sidebar-tab-btn.active .tab-icon {
+    stroke: var(--accent-primary); /* Matches your active text color */
+}
+
+.chat-header-icon {
+    width: 20px;       /* Adjust size as needed */
+    height: 20px;
+    object-fit: contain; /* Ensures the image doesn't get squished */
+    display: inline-block;
+    vertical-align: middle;
+    margin-right: 6px;
+    margin-top: -4px;  /* Aligns vertically with text */
+    border-radius: 4px; /* Optional: adds slightly rounded corners */
 }

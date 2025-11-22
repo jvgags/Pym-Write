@@ -2556,7 +2556,7 @@ function loadChatHistory() {
     container.innerHTML = '';
     
     if (chatHistory.length === 0) {
-        container.innerHTML = '<p style="text-align:center; color:var(--text-tertiary); padding:20px; font-size:12px;">Start a conversation with the AI assistant...</p>';
+        container.innerHTML = '<p style="text-align:center; color:var(--text-tertiary); padding:20px; font-size:12px;">Start a conversation with Pym...</p>';
         return;
     }
 
@@ -2581,7 +2581,18 @@ function appendChatMessage(role, content, shouldSave = true) {
 
     const header = document.createElement('div');
     header.className = 'chat-message-header';
-    header.textContent = role === 'user' ? '👤 You' : '🤖 AI Assistant';
+    // app.js
+
+    // app.js
+
+    // 1. Define the image tag pointing to your PNG file
+    // Make sure 'robot.png' is inside your project folder!
+    const pymIcon = `<img src="Pym.png" class="chat-header-icon" alt="Robot">`;
+
+    // 2. Update the header
+    header.innerHTML = role === 'user' 
+        ? '👤 You' 
+        : `${pymIcon} Pym`;
 
     const contentDiv = document.createElement('div');
     contentDiv.className = 'chat-message-content';
@@ -2687,7 +2698,7 @@ async function sendChatMessage() {
             }
         }
 
-        const systemPrompt = `You are a helpful AI writing assistant. You help writers with their creative projects.${contextText ? '\n\nContext about the current project:' + contextText : ''}`;
+        const systemPrompt = `You are Pym, a helpful AI writing assistant. You help writers with their creative projects.${contextText ? '\n\nContext about the current project:' + contextText : ''}`;
 
         const messages = [{ role: 'system', content: systemPrompt }];
         
