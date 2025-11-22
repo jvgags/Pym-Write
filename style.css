@@ -110,8 +110,13 @@ body {
 [data-theme="typewriter"] {
         .ql-editor,
         .document-info,
-        .project-card {
+        .project-card,
+        .chat-message-content {
     background-color: #FCF5E4 !important;
+    }
+
+    .chat-message-content {
+       font-weight: 600;
     }
 }
 

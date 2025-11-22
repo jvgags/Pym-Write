@@ -2547,7 +2547,7 @@ function handleProjectDragEnd(e) {
     draggedProject = null;
 }
 
-/* ========== CHAT FUNCTIONS ========== */
+// ========== COMPLETE CHAT FUNCTIONS WITH SCROLL FIXES ==========
 
 function loadChatHistory() {
     const container = document.getElementById('chatMessages');
@@ -2564,7 +2564,10 @@ function loadChatHistory() {
         appendChatMessage(msg.role, msg.content, false);
     });
 
-    container.scrollTop = container.scrollHeight;
+    // CHANGE 1: Scroll to bottom after loading all messages
+    setTimeout(() => {
+        container.scrollTop = container.scrollHeight;
+    }, 100);
 }
 
 function appendChatMessage(role, content, shouldSave = true) {
@@ -2581,15 +2584,9 @@ function appendChatMessage(role, content, shouldSave = true) {
 
     const header = document.createElement('div');
     header.className = 'chat-message-header';
-    // app.js
-
-    // app.js
-
-    // 1. Define the image tag pointing to your PNG file
-    // Make sure 'robot.png' is inside your project folder!
+    
     const pymIcon = `<img src="Pym.png" class="chat-header-icon" alt="Robot">`;
-
-    // 2. Update the header
+    
     header.innerHTML = role === 'user' 
         ? '👤 You' 
         : `${pymIcon} Pym`;
@@ -2621,7 +2618,11 @@ function appendChatMessage(role, content, shouldSave = true) {
     }
 
     container.appendChild(messageDiv);
-    container.scrollTop = container.scrollHeight;
+    
+    // CHANGE 2: Smooth scroll to bottom to show the new message
+    setTimeout(() => {
+        container.scrollTop = container.scrollHeight;
+    }, 50);
 
     if (shouldSave) {
         chatHistory.push({ role, content, timestamp: new Date().toISOString() });
@@ -2666,7 +2667,11 @@ async function sendChatMessage() {
         </div>
     `;
     container.appendChild(loadingDiv);
-    container.scrollTop = container.scrollHeight;
+    
+    // CHANGE 3: Smooth scroll to show loading indicator
+    setTimeout(() => {
+        container.scrollTop = container.scrollHeight;
+    }, 50);
 
     try {
         const model = document.getElementById('modelSelect').value;
