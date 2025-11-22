@@ -1398,11 +1398,6 @@ async function continueStory() {
     }
 }
 
-// NEW: Continue from cursor position (floating button or Tab)
-// app.js
-
-// app.js
-
 async function continueFromCursor() {
     if (!apiKey) {
         showToast('Please add an API key in Settings');
@@ -1419,22 +1414,15 @@ async function continueFromCursor() {
         return;
     }
 
-    // --- FIX STARTS HERE ---
-    // 1. DO NOT hide the button yet. We want to see the spinner.
-    // hideFloatingContinueButton(); <--- DELETED THIS LINE
-
-    // 2. Trigger the spinner visual state
     showGeneratingState(true);
-    // --- FIX ENDS HERE ---
 
     const currentText = quillEditor.getText();
     if (currentText.trim().length < 50) {
         showToast('Write a little more before continuing');
-        showGeneratingState(false); // Reset if validation fails
+        showGeneratingState(false);
         return;
     }
 
-    // Visual feedback for the top toolbar (syncs both buttons)
     const topBtn = document.getElementById('continueBtn');
     const originalTopHTML = topBtn ? topBtn.innerHTML : '';
     if (topBtn) {
@@ -1488,9 +1476,15 @@ async function continueFromCursor() {
         const data = await response.json();
         const aiText = data.choices[0].message.content.trim();
 
-        // --- FIX STEP 3 ---
-        // NOW we hide the button, just before we start typing the text
         hideFloatingContinueButton();
+        
+        // Scroll to cursor position before starting stream
+        const quillContainer = document.querySelector('.ql-container');
+        if (quillContainer) {
+            setTimeout(() => {
+                quillContainer.scrollTop = quillContainer.scrollHeight;
+            }, 100);
+        }
         
         // Stream-type insertion at cursor
         streamInsertAtCursor(aiText, range.index);
@@ -1499,7 +1493,6 @@ async function continueFromCursor() {
         console.error('AI Error:', error);
         showToast('Generation failed. Check API key and internet.');
     } finally {
-        // Reset states
         if (topBtn) {
             topBtn.disabled = false;
             topBtn.innerHTML = originalTopHTML;
@@ -1510,6 +1503,7 @@ async function continueFromCursor() {
 
 // Show floating button when cursor is in a good spot
 function updateFloatingContinueButton() {
+    // Don't show during streaming
     if (isStreaming) return;
 
     // FIX: Immediately exit and hide buttons if no document is selected
@@ -1521,11 +1515,15 @@ function updateFloatingContinueButton() {
     // Don't show if Accept/Reject buttons are visible
     const acceptRejectContainer = document.getElementById('acceptRejectContainer');
     if (acceptRejectContainer && acceptRejectContainer.style.display === 'flex') {
+        hideFloatingContinueButton();
         return;
     }
 
     const range = quillEditor.getSelection();
-    if (!range) return;
+    if (!range) {
+        hideFloatingContinueButton();
+        return;
+    }
 
     const continueBtn = document.getElementById('floatingContinueBtn');
     const goBtn = document.getElementById('floatingGoBtn');
@@ -1566,19 +1564,24 @@ function hasEnabledContextDocuments() {
 // Shared positioning logic (works perfectly with scroll)
 function positionFloatingButton(btn, range) {
     const bounds = quillEditor.getBounds(range.index);
+    const quillContainer = document.querySelector('.ql-container'); // CHANGED: Get container instead
     const editor = document.querySelector('.ql-editor');
     const rect = editor.getBoundingClientRect();
 
-    let x = rect.left + bounds.left + editor.scrollLeft + 12;
-    let y = rect.top + bounds.bottom + editor.scrollTop + 10;
+    // FIXED: Use quillContainer scroll position instead of editor
+    const scrollTop = quillContainer ? quillContainer.scrollTop : 0;
+    const scrollLeft = quillContainer ? quillContainer.scrollLeft : 0;
+
+    let x = rect.left + bounds.left + scrollLeft + 12;
+    let y = rect.top + bounds.bottom - scrollTop + 10; // CHANGED: subtract scrollTop
     let flipped = false;
    
-    // ← THIS IS THE MAGIC: Flip button above the line if it would be off-screen
+    // Flip button above the line if it would be off-screen
     const buttonHeight = 50; // approx height of floating button
-    const spaceBelow = window.innerHeight - (rect.top + bounds.bottom + editor.scrollTop);
+    const spaceBelow = window.innerHeight - (rect.top + bounds.bottom - scrollTop);
     
     if (spaceBelow < buttonHeight + 20) {
-        y = rect.top + bounds.top + editor.scrollTop - buttonHeight - 8;
+        y = rect.top + bounds.top - scrollTop - buttonHeight - 8;
         flipped = true;
     }
 
@@ -1589,23 +1592,13 @@ function positionFloatingButton(btn, range) {
     btn.style.top = y + 'px';
 }
 
-// app.js
-
-// app.js
-
+// Also update startFromScratch function
 async function startFromScratch() {
-    // --- FIX 1: Do NOT hide the button immediately ---
-    // hideFloatingContinueButton(); <--- REMOVED
-
-    // Show the spinner on the "Go" button (true = generating, true = isGoButton)
     showGeneratingState(true, true);
-
-    // --- FIX 2: Do NOT manually hide the button element ---
-    // document.getElementById('floatingGoBtn').style.display = 'none'; <--- REMOVED
 
     if (!apiKey) {
         showToast('Add your OpenRouter API key in Settings');
-        showGeneratingState(false, true); // Reset state
+        showGeneratingState(false, true);
         return;
     }
 
@@ -1614,7 +1607,6 @@ async function startFromScratch() {
     const temp = parseFloat(document.getElementById('temperature').value);
     const contextNotes = document.getElementById('contextNotes').value;
 
-    // Gather full context from enabled documents
     const enabledDocs = documents
         .filter(d => d.projectId === currentProjectId && d.enabled && d.id !== currentDocumentId)
         .sort((a, b) => a.order - b.order);
@@ -1629,7 +1621,7 @@ async function startFromScratch() {
     const systemPrompt = `You are an expert novelist starting a new ${getCurrentProjectGenre() || 'story'}.
 Use ALL the context below to begin writing the first scene/chapter in a compelling, immersive style.
 Write in third-person limited (or first-person if the style guide says so).
-Start directly with action or vivid description — no summaries or "Chapter 1" titles unless instructed.
+Start directly with action or vivid description – no summaries or "Chapter 1" titles unless instructed.
 
 Context:
 ${fullContext}`;
@@ -1637,8 +1629,6 @@ ${fullContext}`;
     const userPrompt = "Begin the story now.";
 
     try {
-        // Note: We rely on showGeneratingState for the visual update now, not textContent assignment
-
         const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
             method: 'POST',
             headers: {
@@ -1663,8 +1653,13 @@ ${fullContext}`;
         const data = await response.json();
         const generatedText = data.choices[0].message.content.trim();
 
-        // --- FIX 3: Hide the button NOW, just before streaming starts ---
         hideFloatingContinueButton();
+        
+        // Scroll to top before starting stream
+        const quillContainer = document.querySelector('.ql-container');
+        if (quillContainer) {
+            quillContainer.scrollTop = 0;
+        }
 
         // Stream from the very beginning
         streamInsertAtCursor(generatedText, 0);
@@ -1672,9 +1667,7 @@ ${fullContext}`;
     } catch (err) {
         console.error(err);
         showToast('Failed to start. Check API key.');
-        // If it fails, the button stays visible so they can click it again
     } finally {
-        // Remove the spinner state (if the button is still visible, it goes back to "Go")
         showGeneratingState(false, true);  
     }
 }
@@ -1728,6 +1721,10 @@ function streamInsertAtCursor(text, startIndex) {
     generatedTextStartIndex = startIndex;
     generatedTextLength = 0;
     
+    // Get the actual scrollable elements
+    const quillContainer = document.querySelector('.ql-container');
+    const editorElement = document.querySelector('.ql-editor');
+    
     let i = 0;
     streamingInterval = setInterval(() => {
         if (i < text.length) {
@@ -1741,12 +1738,29 @@ function streamInsertAtCursor(text, startIndex) {
             const newPosition = startIndex + i;
             quillEditor.setSelection(newPosition, 0);
             
-            // Force scroll to cursor position
+            // Force scroll to cursor position - try multiple methods
             if (i % 5 === 0 || i === text.length) {
-                window.scrollTo({
-                    top: document.documentElement.scrollHeight,
-                    behavior: 'smooth'
-                });
+                // Method 1: Scroll the container
+                if (quillContainer) {
+                    quillContainer.scrollTop = quillContainer.scrollHeight;
+                }
+                
+                // Method 2: Scroll the editor element
+                if (editorElement) {
+                    editorElement.scrollTop = editorElement.scrollHeight;
+                }
+                
+                // Method 3: Use Quill's scrollIntoView
+                try {
+                    const bounds = quillEditor.getBounds(newPosition);
+                    if (bounds && quillContainer) {
+                        const containerHeight = quillContainer.clientHeight;
+                        const scrollPos = quillContainer.scrollTop + bounds.top + bounds.height - containerHeight + 100;
+                        quillContainer.scrollTop = scrollPos;
+                    }
+                } catch (e) {
+                    // Ignore bounds errors
+                }
             }
         } else {
             clearInterval(streamingInterval);
@@ -1762,6 +1776,7 @@ function streamInsertAtCursor(text, startIndex) {
         }
     }, 16); 
 }
+
 
 // ADD these new functions:
 function showStopButton() {
@@ -1829,10 +1844,15 @@ function hideAcceptRejectButtons() {
     }
 }
 
+// UPDATED: Better Accept/Reject functions with forced button update
 function acceptGeneratedText() {
     if (generatedTextStartIndex !== null && generatedTextLength > 0) {
         // Remove purple color formatting - make text black
         quillEditor.formatText(generatedTextStartIndex, generatedTextLength, { color: false });
+        
+        // Set cursor to end of accepted text
+        const endPosition = generatedTextStartIndex + generatedTextLength;
+        quillEditor.setSelection(endPosition, 0);
     }
     
     // Reset tracking variables
@@ -1842,8 +1862,14 @@ function acceptGeneratedText() {
     hideAcceptRejectButtons();
     showToast('Text accepted! ✨');
     
-    // Allow continue button to appear again
-    setTimeout(updateFloatingContinueButton, 100);
+    // Multiple checks to ensure button appears
+    setTimeout(() => {
+        updateFloatingContinueButton();
+    }, 50);
+    
+    setTimeout(() => {
+        updateFloatingContinueButton();
+    }, 350);
 }
 
 function rejectGeneratedText() {
@@ -1865,9 +1891,16 @@ function rejectGeneratedText() {
     hasUnsavedChanges = true;
     updateWordCount();
     
-    // Allow continue button to appear again
-    setTimeout(updateFloatingContinueButton, 100);
+    // Multiple checks to ensure button appears
+    setTimeout(() => {
+        updateFloatingContinueButton();
+    }, 50);
+    
+    setTimeout(() => {
+        updateFloatingContinueButton();
+    }, 350);
 }
+
 
 
 async function improveText() {
