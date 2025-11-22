@@ -35,6 +35,7 @@ let isStreaming = false;
 let streamingInterval = null;
 let generatedTextStartIndex = null;
 let generatedTextLength = 0;
+let chatHistory = [];
 
 // IndexedDB Setup
 const DB_NAME = 'AINovelWriterDB';
@@ -116,6 +117,8 @@ window.onload = async function() {
     quillEditor = new Quill('#editor', {
         theme: 'snow',
         placeholder: 'Select a document from the sidebar to start writing...',
+        // ADD THIS LINE TO FIX THE JUMPING:
+        scrollingContainer: 'html',
         modules: {
             toolbar: {
                 // Define the toolbar buttons
@@ -266,6 +269,20 @@ window.onload = async function() {
         currentDocumentId = settings.lastDocumentId;
         loadDocumentToEditor();
     }
+
+     // Load chat history
+    loadChatHistory();
+
+    // Enter key in chat input
+    const chatInput = document.getElementById('chatInput');
+    if (chatInput) {
+        chatInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendChatMessage();
+            }
+        });
+    }
 };
 
 /* ========== API KEY MANAGEMENT ========== */
@@ -310,6 +327,7 @@ async function autoSave() {
         projects,
         documents,
         settings,
+        chatHistory,
         version: '3.0',
         timestamp: new Date().toISOString()
     };
@@ -342,6 +360,7 @@ async function loadData() {
     projects = savedData?.projects || [];
     documents = savedData?.documents || [];
     settings = { ...settings, ...(savedData?.settings || {}) };
+    chatHistory = savedData?.chatHistory || [];
 }
 
 /* ========== BACKUP & RESTORE ========== */
@@ -352,6 +371,7 @@ async function createBackup() {
             projects,
             documents,
             settings,
+            chatHistory,
             version: '3.0',
             timestamp: new Date().toISOString()
         };
@@ -388,6 +408,7 @@ async function restoreFromBackup(file) {
             projects = data.projects || [];
             documents = data.documents || [];
             settings = { ...settings, ...(data.settings || {}) };
+            chatHistory = data.chatHistory || [];
 
             // Sync imported theme to localStorage
             if (settings.theme) {
@@ -399,6 +420,7 @@ async function restoreFromBackup(file) {
             updateProjectsList();
             updateProjectDropdown();
             updateDocumentsList();
+            loadChatHistory();
             
             document.getElementById('themeSelect').value = settings.theme || 'default';
             applyTheme(settings.theme || 'default');
@@ -2523,4 +2545,225 @@ function handleProjectDragEnd(e) {
     });
     
     draggedProject = null;
+}
+
+/* ========== CHAT FUNCTIONS ========== */
+
+function loadChatHistory() {
+    const container = document.getElementById('chatMessages');
+    if (!container) return;
+
+    container.innerHTML = '';
+    
+    if (chatHistory.length === 0) {
+        container.innerHTML = '<p style="text-align:center; color:var(--text-tertiary); padding:20px; font-size:12px;">Start a conversation with the AI assistant...</p>';
+        return;
+    }
+
+    chatHistory.forEach(msg => {
+        appendChatMessage(msg.role, msg.content, false);
+    });
+
+    container.scrollTop = container.scrollHeight;
+}
+
+function appendChatMessage(role, content, shouldSave = true) {
+    const container = document.getElementById('chatMessages');
+    if (!container) return;
+
+    const emptyMsg = container.querySelector('p');
+    if (emptyMsg && emptyMsg.textContent.includes('Start a conversation')) {
+        emptyMsg.remove();
+    }
+
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `chat-message ${role}`;
+
+    const header = document.createElement('div');
+    header.className = 'chat-message-header';
+    header.textContent = role === 'user' ? '👤 You' : '🤖 AI Assistant';
+
+    const contentDiv = document.createElement('div');
+    contentDiv.className = 'chat-message-content';
+    contentDiv.textContent = content;
+
+    messageDiv.appendChild(header);
+    messageDiv.appendChild(contentDiv);
+
+    if (role === 'assistant') {
+        const actionsDiv = document.createElement('div');
+        actionsDiv.className = 'chat-message-actions';
+
+        const insertBtn = document.createElement('button');
+        insertBtn.className = 'chat-action-btn';
+        insertBtn.textContent = '📝 Insert';
+        insertBtn.onclick = () => insertChatMessage(content);
+
+        const copyBtn = document.createElement('button');
+        copyBtn.className = 'chat-action-btn';
+        copyBtn.textContent = '📋 Copy';
+        copyBtn.onclick = () => copyChatMessage(content);
+
+        actionsDiv.appendChild(insertBtn);
+        actionsDiv.appendChild(copyBtn);
+        messageDiv.appendChild(actionsDiv);
+    }
+
+    container.appendChild(messageDiv);
+    container.scrollTop = container.scrollHeight;
+
+    if (shouldSave) {
+        chatHistory.push({ role, content, timestamp: new Date().toISOString() });
+        autoSave();
+    }
+}
+
+async function sendChatMessage() {
+    const input = document.getElementById('chatInput');
+    const sendBtn = document.querySelector('.chat-send-btn');
+    
+    if (!input || !sendBtn) return;
+
+    const message = input.value.trim();
+    if (!message) {
+        showToast('Please enter a message');
+        return;
+    }
+
+    if (!apiKey) {
+        showToast('Please add an API key in Settings');
+        return;
+    }
+
+    input.disabled = true;
+    sendBtn.disabled = true;
+    const originalBtnText = sendBtn.innerHTML;
+    sendBtn.innerHTML = '<span>Sending...</span><span class="send-icon">⏳</span>';
+
+    appendChatMessage('user', message);
+    input.value = '';
+
+    const container = document.getElementById('chatMessages');
+    const loadingDiv = document.createElement('div');
+    loadingDiv.className = 'chat-loading';
+    loadingDiv.innerHTML = `
+        <span>AI is thinking</span>
+        <div class="chat-loading-dots">
+            <div class="chat-loading-dot"></div>
+            <div class="chat-loading-dot"></div>
+            <div class="chat-loading-dot"></div>
+        </div>
+    `;
+    container.appendChild(loadingDiv);
+    container.scrollTop = container.scrollHeight;
+
+    try {
+        const model = document.getElementById('modelSelect').value;
+        const temperature = parseFloat(document.getElementById('temperature').value);
+
+        let contextText = '';
+        
+        if (currentDocumentId) {
+            const currentDoc = documents.find(d => d.id === currentDocumentId);
+            if (currentDoc) {
+                const docText = quillEditor.getText();
+                if (docText.trim().length > 0) {
+                    contextText += `\n\nCurrent document "${currentDoc.title}":\n${docText.slice(-2000)}`;
+                }
+            }
+        }
+
+        if (currentProjectId) {
+            const enabledDocs = documents
+                .filter(d => d.projectId === currentProjectId && d.enabled && d.id !== currentDocumentId)
+                .sort((a, b) => a.order - b.order);
+            
+            if (enabledDocs.length > 0) {
+                contextText += '\n\nContext documents:\n';
+                enabledDocs.forEach(doc => {
+                    const docText = new DOMParser().parseFromString(doc.content, 'text/html').body.textContent || '';
+                    contextText += `\n--- ${doc.type}: ${doc.title} ---\n${docText.slice(0, 1000)}\n`;
+                });
+            }
+        }
+
+        const systemPrompt = `You are a helpful AI writing assistant. You help writers with their creative projects.${contextText ? '\n\nContext about the current project:' + contextText : ''}`;
+
+        const messages = [{ role: 'system', content: systemPrompt }];
+        
+        const recentHistory = chatHistory.slice(-10);
+        recentHistory.forEach(msg => {
+            messages.push({ role: msg.role, content: msg.content });
+        });
+
+        messages.push({ role: 'user', content: message });
+
+        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`,
+                'HTTP-Referer': window.location.origin,
+                'X-Title': 'Pym Write'
+            },
+            body: JSON.stringify({
+                model: model,
+                messages: messages,
+                temperature: temperature,
+                max_tokens: 2048
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`API error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        const aiResponse = data.choices[0].message.content.trim();
+
+        loadingDiv.remove();
+        appendChatMessage('assistant', aiResponse);
+
+    } catch (error) {
+        console.error('Chat error:', error);
+        loadingDiv.remove();
+        showToast('Failed to send message. Check your API key.');
+    } finally {
+        input.disabled = false;
+        sendBtn.disabled = false;
+        sendBtn.innerHTML = originalBtnText;
+        input.focus();
+    }
+}
+
+function insertChatMessage(content) {
+    if (!currentDocumentId) {
+        showToast('Please select a document first');
+        return;
+    }
+
+    const selection = quillEditor.getSelection();
+    const index = selection ? selection.index : quillEditor.getLength();
+    
+    quillEditor.insertText(index, '\n\n' + content);
+    hasUnsavedChanges = true;
+    updateWordCount();
+    showToast('Text inserted! 📝');
+}
+
+function copyChatMessage(content) {
+    navigator.clipboard.writeText(content).then(() => {
+        showToast('Copied to clipboard! 📋');
+    }).catch(() => {
+        showToast('Failed to copy');
+    });
+}
+
+function clearChatHistory() {
+    if (!confirm('Clear all chat history?')) return;
+
+    chatHistory = [];
+    autoSave();
+    loadChatHistory();
+    showToast('Chat history cleared');
 }

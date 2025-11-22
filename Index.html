@@ -95,9 +95,9 @@
 
                     <!-- Sidebar Tabs -->
                     <div class="sidebar-tabs">
-                        <button class="sidebar-tab-btn active" onclick="switchSidebarTab('documents')">📄
-                            Documents</button>
+                        <button class="sidebar-tab-btn active" onclick="switchSidebarTab('documents')">📄 Documents</button>
                         <button class="sidebar-tab-btn" onclick="switchSidebarTab('ai')">🤖 AI Assistant</button>
+                        <button class="sidebar-tab-btn" onclick="switchSidebarTab('chat')">💬 Chat</button>
                     </div>
 
                     <!-- Documents Tab -->
@@ -169,6 +169,24 @@
                                 <textarea id="contextNotes"
                                     placeholder="Add notes about your story, characters, or plot to help the AI understand your narrative..."></textarea>
                                 <p class="context-hint">💡 Tip: Toggle documents to include them automatically!</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Chat Tab -->
+                    <div id="sidebar-chat-tab" class="sidebar-tab-content">
+                        <div class="chat-container">
+                            <div class="chat-header">
+                                <h4>💬 AI Chat</h4>
+                                <button class="icon-btn small-icon-btn" onclick="clearChatHistory()" title="Clear Chat">🗑️</button>
+                            </div>
+                            <div id="chatMessages" class="chat-messages"></div>
+                            <div class="chat-input-container">
+                                <textarea id="chatInput" placeholder="Ask anything about your story..." rows="3"></textarea>
+                                <button class="chat-send-btn" onclick="sendChatMessage()">
+                                    <span>Send</span>
+                                    <span class="send-icon">📤</span>
+                                </button>
                             </div>
                         </div>
                     </div>
