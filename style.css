@@ -2032,3 +2032,94 @@ body.expanded-mode .editor-layout-new {
     margin-top: -4px;  /* Aligns vertically with text */
     border-radius: 4px; /* Optional: adds slightly rounded corners */
 }
+
+/* ========== STICKY QUILL TOOLBAR FIX ========== */
+
+/* Make the editor panel a scroll container */
+.editor-panel-new {
+    background: var(--bg-secondary);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden; /* Important: contains the scroll */
+    height: 100%;
+}
+
+/* Keep document info at top (not sticky, but visible) */
+.document-info {
+    margin-bottom: 20px;
+    padding: 15px;
+    background: var(--bg-tertiary) !important;
+    border-radius: 8px;
+    border-left: 4px solid var(--accent-primary);
+    flex-shrink: 0; /* Don't shrink when scrolling */
+}
+
+/* Keep toolbar at top (not sticky, but visible) */
+.editor-toolbar {
+    display: flex;
+    gap: 5px;
+    padding: 10px;
+    background: var(--bg-tertiary);
+    border-radius: 8px;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+    flex-shrink: 0; /* Don't shrink when scrolling */
+}
+
+/* Make the editor container scrollable */
+.editor-container-new {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden; /* This is the key */
+    position: relative;
+    min-height: 0; /* Important for flex overflow */
+}
+
+/* Make Quill toolbar sticky */
+.ql-toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    background: var(--bg-tertiary);
+    border-color: var(--border-color);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* Subtle shadow when scrolling */
+}
+
+/* Make the Quill container take remaining space and scroll */
+.ql-container {
+    font-size: 16px;
+    font-family: Georgia, 'Times New Roman', serif;
+    flex: 1;
+    overflow-y: auto !important; /* Force scrolling here */
+    display: flex;
+    flex-direction: column;
+}
+
+/* Editor content area */
+.ql-editor {
+    line-height: 1.8;
+    padding: 20px;
+    min-height: 100%;
+    background-color: var(--bg-tertiary) !important;
+    flex: 1; /* Takes all available space */
+}
+
+/* Override any Quill defaults that might interfere */
+#editor {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* Make sure the Quill container border radius works with sticky toolbar */
+.ql-container.ql-snow {
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+}
